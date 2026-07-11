@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Interop;
+using Microsoft.Win32;
 using SecureVault.Core.Vault;
 using SecureVault.Windows.Platform;
 
@@ -20,7 +22,30 @@ public partial class VaultListWindow : Window
 
     private void RefreshList()
     {
+        StorageFolderText.Text = App.VaultManager.RootDirectory;
         VaultsListBox.ItemsSource = App.VaultManager.ListVaults();
+    }
+
+    private void OnOpenFolderClick(object sender, RoutedEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(App.VaultManager.RootDirectory) { UseShellExecute = true });
+    }
+
+    private void OnChangeFolderClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Выберите папку для хранения сейфов",
+            InitialDirectory = App.VaultManager.RootDirectory,
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        App.VaultManager = new SecureVault.Core.Vault.VaultManager(dialog.FolderName);
+        StorageSettings.SetVaultsFolder(dialog.FolderName);
+        RefreshList();
     }
 
     private void OnNewVaultClick(object sender, RoutedEventArgs e)

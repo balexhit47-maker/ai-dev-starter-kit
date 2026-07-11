@@ -23,9 +23,10 @@
                   GridViewColumnHeader.Click="OnColumnHeaderClick">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Название" Width="280" DisplayMemberBinding="{Binding Title}"/>
-                    <GridViewColumn Header="Тип" Width="110" DisplayMemberBinding="{Binding Type}"/>
-                    <GridViewColumn Header="Изменено" Width="170" DisplayMemberBinding="{Binding ModifiedAt}"/>
+                    <GridViewColumn x:Name="TitleColumn" Header="Название" Width="280" DisplayMemberBinding="{Binding Title}"/>
+                    <GridViewColumn x:Name="TypeColumn" Header="Тип" Width="110" DisplayMemberBinding="{Binding Type}"/>
+                    <GridViewColumn x:Name="ModifiedColumn" Header="Изменено" Width="170"
+                                    DisplayMemberBinding="{Binding ModifiedAt.LocalDateTime, StringFormat={}{0:dd.MM.yyyy HH:mm}}"/>
                 </GridView>
             </ListView.View>
         </ListView>

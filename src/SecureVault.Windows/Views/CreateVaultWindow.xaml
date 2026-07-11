@@ -8,6 +8,12 @@
             <TextBlock Text="Имя сейфа" Style="{StaticResource FieldLabelStyle}"/>
             <TextBox x:Name="NameTextBox" Margin="0,0,0,14"/>
 
+            <TextBlock Text="Папка для сохранения" Style="{StaticResource FieldLabelStyle}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <Button Content="Изменить..." Click="OnBrowseFolderClick"/>
+                <TextBlock x:Name="FolderText" Style="{StaticResource HintTextStyle}" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
             <TextBlock Text="Мастер-пароль" Style="{StaticResource FieldLabelStyle}"/>
             <PasswordBox x:Name="PasswordBox" Margin="0,0,0,14"/>
 

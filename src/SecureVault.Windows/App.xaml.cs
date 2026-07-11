@@ -13,7 +13,8 @@ public partial class App : Application
 
     public static ClipboardAutoClearService Clipboard { get; private set; } = null!;
 
-    public static VaultManager VaultManager { get; private set; } = null!;
+    /// <summary>Swappable (not just settable-once) so changing the vaults folder can rebind it live.</summary>
+    public static VaultManager VaultManager { get; set; } = null!;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -21,7 +22,7 @@ public partial class App : Application
 
         PlatformSecurity = new WindowsPlatformSecurity();
         Clipboard = new ClipboardAutoClearService(new WindowsClipboardService());
-        VaultManager = new VaultManager();
+        VaultManager = new VaultManager(StorageSettings.TryGetCustomVaultsFolder());
 
         MainWindow = new VaultListWindow();
         MainWindow.Show();

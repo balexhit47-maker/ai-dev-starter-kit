@@ -18,6 +18,7 @@ public partial class CreateVaultWindow : Window
     public CreateVaultWindow()
     {
         InitializeComponent();
+        FolderText.Text = App.VaultManager.RootDirectory;
         SourceInitialized += (_, _) => WindowChromeHelper.UseLightTitleBar(new WindowInteropHelper(this).Handle);
         Closed += (_, _) =>
         {
@@ -26,6 +27,23 @@ public partial class CreateVaultWindow : Window
                 CryptographicOperations.ZeroMemory(_keyfileBytes);
             }
         };
+    }
+
+    private void OnBrowseFolderClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Выберите папку для хранения сейфов",
+            InitialDirectory = App.VaultManager.RootDirectory,
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        App.VaultManager = new VaultManager(dialog.FolderName);
+        StorageSettings.SetVaultsFolder(dialog.FolderName);
+        FolderText.Text = App.VaultManager.RootDirectory;
     }
 
     private void OnBrowseKeyfileClick(object sender, RoutedEventArgs e)

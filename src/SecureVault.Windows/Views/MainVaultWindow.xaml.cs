@@ -60,6 +60,15 @@ public partial class MainVaultWindow : Window
         };
 
         EntriesListView.ItemsSource = view.ToList();
+        UpdateSortIndicators();
+    }
+
+    private void UpdateSortIndicators()
+    {
+        var arrow = _sortAscending ? " ▲" : " ▼";
+        TitleColumn.Header = "Название" + (_sortColumn == "Title" ? arrow : "");
+        TypeColumn.Header = "Тип" + (_sortColumn == "Type" ? arrow : "");
+        ModifiedColumn.Header = "Изменено" + (_sortColumn == "ModifiedAt" ? arrow : "");
     }
 
     /// <summary>
@@ -125,13 +134,20 @@ public partial class MainVaultWindow : Window
             return;
         }
 
-        var column = (header.Column.Header as string) switch
+        string? column = null;
+        if (ReferenceEquals(header.Column, TitleColumn))
         {
-            "Название" => "Title",
-            "Тип" => "Type",
-            "Изменено" => "ModifiedAt",
-            _ => null,
-        };
+            column = "Title";
+        }
+        else if (ReferenceEquals(header.Column, TypeColumn))
+        {
+            column = "Type";
+        }
+        else if (ReferenceEquals(header.Column, ModifiedColumn))
+        {
+            column = "ModifiedAt";
+        }
+
         if (column is null)
         {
             return;
