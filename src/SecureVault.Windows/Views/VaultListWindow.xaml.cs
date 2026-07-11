@@ -23,8 +23,10 @@ public partial class VaultListWindow : Window
     private void RefreshList()
     {
         StorageFolderText.Text = App.VaultManager.RootDirectory;
-        VaultsListBox.ItemsSource = App.VaultManager.ListVaults();
+        VaultsListBox.ItemsSource = App.VaultManager.ListVaults(ShowAllFilesCheckBox.IsChecked == true);
     }
+
+    private void OnShowAllFilesChanged(object sender, RoutedEventArgs e) => RefreshList();
 
     private void OnOpenFolderClick(object sender, RoutedEventArgs e)
     {

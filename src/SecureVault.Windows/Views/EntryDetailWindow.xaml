@@ -39,13 +39,26 @@
             </StackPanel>
 
             <StackPanel x:Name="FilePanel" Visibility="Collapsed">
-                <TextBlock x:Name="FileNameText" Style="{StaticResource HintTextStyle}" Margin="0,0,0,10" TextWrapping="Wrap"/>
-                <Image x:Name="FilePreviewImage" MaxHeight="220" Stretch="Uniform" HorizontalAlignment="Left"
-                       Margin="0,0,0,10" Visibility="Collapsed"/>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="Заменить файл..." Margin="0,0,8,0" Click="OnReplaceFileClick"/>
-                    <Button Content="Сохранить как..." Click="OnSaveFileClick"/>
-                </StackPanel>
+                <ListBox x:Name="FilesListBox" Height="180" BorderThickness="1" Margin="0,0,0,10">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Image Grid.Column="0" Source="{Binding Thumbnail}" Width="32" Height="32" Margin="0,0,10,0"
+                                       Stretch="UniformToFill" Visibility="{Binding ThumbnailVisibility}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding DisplayText}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="2" Content="Сохранить как..." Margin="6,0,0,0" Click="OnSaveOneFileClick"/>
+                                <Button Grid.Column="3" Content="✕" Style="{StaticResource IconButtonStyle}" Margin="6,0,0,0" Click="OnRemoveFileClick" ToolTip="Удалить файл"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Content="Добавить файл..." HorizontalAlignment="Left" Click="OnAddFileClick"/>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">

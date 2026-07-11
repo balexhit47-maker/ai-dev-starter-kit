@@ -34,19 +34,40 @@ public sealed class VaultManager
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SecureVault", "Vaults");
 
     /// <summary>
-    /// Lists ".cavault" files outright, plus any image file in the folder
-    /// that turns out to have a cloaked vault footer (see
+    /// By default, lists ".cavault" files outright, plus any image file in
+    /// the folder that turns out to have a cloaked vault footer (see
     /// <see cref="ImageCloak"/>) — checked by peeking just the last 16 bytes
     /// of each image, not by reading/decoding it.
     /// </summary>
-    public IReadOnlyList<VaultDescriptor> ListVaults()
+    /// <param name="showAllFiles">
+    /// When true, lists every file in the folder regardless of extension or
+    /// content — <see cref="Container.VaultContainer.Open"/> only cares
+    /// about a file's actual bytes, never its name, so a vault saved under
+    /// an unrecognized extension is still openable; this just widens what
+    /// shows up to try.
+    /// </param>
+    public IReadOnlyList<VaultDescriptor> ListVaults(bool showAllFiles = false)
     {
         var results = new List<VaultDescriptor>();
         foreach (var path in Directory.EnumerateFiles(RootDirectory))
         {
-            var extension = Path.GetExtension(path);
-            var isVault = extension.Equals(VaultExtension, StringComparison.OrdinalIgnoreCase)
-                || (ImageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) && HasCloakedFooter(path));
+            if (path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            bool isVault;
+            if (showAllFiles)
+            {
+                isVault = true;
+            }
+            else
+            {
+                var extension = Path.GetExtension(path);
+                isVault = extension.Equals(VaultExtension, StringComparison.OrdinalIgnoreCase)
+                    || (ImageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) && HasCloakedFooter(path));
+            }
+
             if (!isVault)
             {
                 continue;
@@ -76,7 +97,7 @@ public sealed class VaultManager
         var path = ResolvePath(NormalizeVaultFileName(fileName, extension));
         if (File.Exists(path))
         {
-            throw new IOException($"A vault named '{fileName}' already exists.");
+            throw new IOException($"Сейф с именем «{fileName}» уже существует.");
         }
 
         return Container.VaultContainer.Create(path, password, keyfileBytes, coverImageBytes, memoryGuard);

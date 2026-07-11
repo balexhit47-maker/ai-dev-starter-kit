@@ -51,7 +51,7 @@ public sealed class VaultContainer : IDisposable
     {
         if (File.Exists(path))
         {
-            throw new IOException($"A file already exists at '{path}'.");
+            throw new IOException($"Файл «{path}» уже существует.");
         }
 
         var salt = new byte[KeyDerivationParams.SaltSize];
@@ -75,13 +75,13 @@ public sealed class VaultContainer : IDisposable
         var magic = reader.ReadBytes(VaultHeader.MagicBytes.Length);
         if (!magic.AsSpan().SequenceEqual(VaultHeader.MagicBytes))
         {
-            throw new InvalidDataException("Not a SecureVault container.");
+            throw new InvalidDataException("Это не сейф cryptoAll.");
         }
 
         var version = reader.ReadByte();
         if (version != VaultHeader.CurrentVersion)
         {
-            throw new InvalidDataException($"Unsupported container version {version}.");
+            throw new InvalidDataException($"Неподдерживаемая версия контейнера: {version}.");
         }
 
         var salt = reader.ReadBytes(KeyDerivationParams.SaltSize);
@@ -130,9 +130,10 @@ public sealed class VaultContainer : IDisposable
         return AddEntry(EntryType.Note, title, tags, payload);
     }
 
-    public Guid AddFile(string title, IEnumerable<string> tags, string fileName, ReadOnlySpan<byte> fileBytes)
+    /// <summary>Adds one entry holding one or more files (e.g. a batch picked together in the UI).</summary>
+    public Guid AddFiles(string title, IEnumerable<string> tags, IReadOnlyList<(string FileName, byte[] Bytes)> files)
     {
-        var payload = EntryContentCodec.EncodeFile(fileName, fileBytes);
+        var payload = EntryContentCodec.EncodeFiles(files);
         return AddEntry(EntryType.File, title, tags, payload);
     }
 
@@ -148,9 +149,10 @@ public sealed class VaultContainer : IDisposable
         UpdateEntry(id, EntryType.Note, title, tags, payload);
     }
 
-    public void UpdateFile(Guid id, string title, IEnumerable<string> tags, string fileName, ReadOnlySpan<byte> fileBytes)
+    /// <summary>Replaces the full set of files held by a File-type entry (add/remove/replace are all just "save this new set").</summary>
+    public void UpdateFiles(Guid id, string title, IEnumerable<string> tags, IReadOnlyList<(string FileName, byte[] Bytes)> files)
     {
-        var payload = EntryContentCodec.EncodeFile(fileName, fileBytes);
+        var payload = EntryContentCodec.EncodeFiles(files);
         UpdateEntry(id, EntryType.File, title, tags, payload);
     }
 
@@ -184,10 +186,10 @@ public sealed class VaultContainer : IDisposable
         return EntryContentCodec.DecodeNote(plaintext.Span, _memoryGuard);
     }
 
-    public DecodedFile RevealFile(Guid id)
+    public DecodedFiles RevealFiles(Guid id)
     {
         using var plaintext = OpenSealedContent(id, EntryType.File);
-        return EntryContentCodec.DecodeFile(plaintext.Span, _memoryGuard);
+        return EntryContentCodec.DecodeFiles(plaintext.Span, _memoryGuard);
     }
 
     /// <summary>

@@ -90,6 +90,23 @@ public partial class AddEntryWindow : Window
             _selectedFiles.Add(new SelectedFileItem(fileName, bytes, thumbnail));
         }
 
+        RefreshSelectedFilesList();
+    }
+
+    private void OnRemoveFileClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: SelectedFileItem item })
+        {
+            return;
+        }
+
+        _selectedFiles.Remove(item);
+        CryptographicOperations.ZeroMemory(item.Bytes);
+        RefreshSelectedFilesList();
+    }
+
+    private void RefreshSelectedFilesList()
+    {
         SelectedFilesListBox.ItemsSource = null;
         SelectedFilesListBox.ItemsSource = _selectedFiles;
     }
@@ -137,13 +154,8 @@ public partial class AddEntryWindow : Window
                     return;
                 }
 
-                foreach (var file in _selectedFiles)
-                {
-                    var entryTitle = string.IsNullOrEmpty(title)
-                        ? file.FileName
-                        : _selectedFiles.Count == 1 ? title : $"{title} — {file.FileName}";
-                    _container.AddFile(entryTitle, tags, file.FileName, file.Bytes);
-                }
+                var fileEntryTitle = string.IsNullOrEmpty(title) ? _selectedFiles[0].FileName : title;
+                _container.AddFiles(fileEntryTitle, tags, [.. _selectedFiles.Select(f => (f.FileName, f.Bytes))]);
                 break;
         }
 

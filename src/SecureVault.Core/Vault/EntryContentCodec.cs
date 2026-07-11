@@ -59,28 +59,39 @@ public static class EntryContentCodec
         return new DecodedNote(body);
     }
 
-    public static byte[] EncodeFile(string fileName, ReadOnlySpan<byte> fileBytes)
+    /// <summary>Encodes one or more files sharing a single File-type entry.</summary>
+    public static byte[] EncodeFiles(IReadOnlyList<(string FileName, byte[] Bytes)> files)
     {
         using var ms = new MemoryStream();
         using (var bw = new BinaryWriter(ms, Encoding.UTF8, leaveOpen: true))
         {
-            bw.Write(fileName);
-            bw.Write(fileBytes.Length);
-            bw.Write(fileBytes);
+            bw.Write(files.Count);
+            foreach (var (fileName, fileBytes) in files)
+            {
+                bw.Write(fileName);
+                bw.Write(fileBytes.Length);
+                bw.Write(fileBytes);
+            }
         }
         return ms.ToArray();
     }
 
-    public static DecodedFile DecodeFile(ReadOnlySpan<byte> data, IMemoryGuard? memoryGuard = null)
+    public static DecodedFiles DecodeFiles(ReadOnlySpan<byte> data, IMemoryGuard? memoryGuard = null)
     {
         using var ms = new MemoryStream(data.ToArray());
         using var br = new BinaryReader(ms, Encoding.UTF8, leaveOpen: true);
-        var fileName = br.ReadString();
-        var length = br.ReadInt32();
-        var fileBytes = br.ReadBytes(length);
-        var secureBytes = SecureBytes.CopyFrom(fileBytes, memoryGuard);
-        CryptographicOperations.ZeroMemory(fileBytes);
-        return new DecodedFile(fileName, secureBytes);
+        var count = br.ReadInt32();
+        var items = new List<DecodedFileItem>(count);
+        for (var i = 0; i < count; i++)
+        {
+            var fileName = br.ReadString();
+            var length = br.ReadInt32();
+            var fileBytes = br.ReadBytes(length);
+            var secureBytes = SecureBytes.CopyFrom(fileBytes, memoryGuard);
+            CryptographicOperations.ZeroMemory(fileBytes);
+            items.Add(new DecodedFileItem(fileName, secureBytes));
+        }
+        return new DecodedFiles(items);
     }
 
     private static void WriteCharSpan(BinaryWriter writer, ReadOnlySpan<char> value)

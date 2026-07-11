@@ -90,7 +90,7 @@ public class VaultContainerTests : IDisposable
     }
 
     [Fact]
-    public void AddFile_PersistsBytesExactly()
+    public void AddFiles_PersistsBytesExactly()
     {
         var path = NewVaultPath();
         var fileBytes = new byte[12345];
@@ -99,14 +99,67 @@ public class VaultContainerTests : IDisposable
         Guid id;
         using (var vault = VaultContainer.Create(path, "password", Keyfile))
         {
-            id = vault.AddFile("passport-scan", [], "passport.jpg", fileBytes);
+            id = vault.AddFiles("passport-scan", [], [("passport.jpg", fileBytes)]);
             vault.Save();
         }
 
         using var reopened = VaultContainer.Open(path, "password", Keyfile);
-        using var revealed = reopened.RevealFile(id);
-        Assert.Equal("passport.jpg", revealed.FileName);
-        Assert.Equal(fileBytes, revealed.Bytes.Span.ToArray());
+        using var revealed = reopened.RevealFiles(id);
+        var item = Assert.Single(revealed.Items);
+        Assert.Equal("passport.jpg", item.FileName);
+        Assert.Equal(fileBytes, item.Bytes.Span.ToArray());
+    }
+
+    [Fact]
+    public void AddFiles_MultipleFilesShareOneEntry()
+    {
+        var path = NewVaultPath();
+        byte[] fileA = [1, 2, 3];
+        byte[] fileB = [4, 5, 6, 7];
+
+        Guid id;
+        using (var vault = VaultContainer.Create(path, "password", Keyfile))
+        {
+            id = vault.AddFiles("scans", [], [("a.jpg", fileA), ("b.png", fileB)]);
+            vault.Save();
+            Assert.Single(vault.Entries); // one entry, not two
+        }
+
+        using var reopened = VaultContainer.Open(path, "password", Keyfile);
+        using var revealed = reopened.RevealFiles(id);
+        Assert.Equal(2, revealed.Items.Count);
+        Assert.Equal("a.jpg", revealed.Items[0].FileName);
+        Assert.Equal(fileA, revealed.Items[0].Bytes.Span.ToArray());
+        Assert.Equal("b.png", revealed.Items[1].FileName);
+        Assert.Equal(fileB, revealed.Items[1].Bytes.Span.ToArray());
+    }
+
+    [Fact]
+    public void UpdateFiles_CanAddAndRemoveFilesFromAnExistingEntry()
+    {
+        var path = NewVaultPath();
+        byte[] fileA = [1, 2, 3];
+        byte[] fileB = [4, 5, 6];
+
+        Guid id;
+        using (var vault = VaultContainer.Create(path, "password", Keyfile))
+        {
+            id = vault.AddFiles("scans", [], [("a.jpg", fileA)]);
+            vault.Save();
+        }
+
+        using (var opened = VaultContainer.Open(path, "password", Keyfile))
+        {
+            // Simulate: keep a.jpg, add b.jpg (add), then drop a.jpg (delete) — net result is just b.jpg.
+            opened.UpdateFiles(id, "scans", [], [("b.jpg", fileB)]);
+            opened.Save();
+        }
+
+        using var reopened = VaultContainer.Open(path, "password", Keyfile);
+        using var revealed = reopened.RevealFiles(id);
+        var item = Assert.Single(revealed.Items);
+        Assert.Equal("b.jpg", item.FileName);
+        Assert.Equal(fileB, item.Bytes.Span.ToArray());
     }
 
     [Fact]

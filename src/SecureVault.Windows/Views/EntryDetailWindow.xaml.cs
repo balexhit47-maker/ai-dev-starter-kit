@@ -2,6 +2,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using SecureVault.Core.Container;
 using SecureVault.Core.Vault;
@@ -13,14 +14,12 @@ public partial class EntryDetailWindow : Window
 {
     private readonly VaultContainer _container;
     private readonly VaultEntryMetadata _metadata;
+    private readonly List<FileItem> _files = [];
 
     private DecodedLogin? _login;
     private DecodedNote? _note;
-    private DecodedFile? _file;
     private string? _originalPassword;
     private bool _passwordVisible;
-    private byte[]? _replacementFileBytes;
-    private string? _replacementFileName;
 
     public EntryDetailWindow(VaultContainer container, VaultEntryMetadata metadata)
     {
@@ -31,9 +30,9 @@ public partial class EntryDetailWindow : Window
         TagsTextBox.Text = string.Join(", ", metadata.Tags);
         Closed += (_, _) =>
         {
-            if (_replacementFileBytes is not null)
+            foreach (var file in _files)
             {
-                CryptographicOperations.ZeroMemory(_replacementFileBytes);
+                CryptographicOperations.ZeroMemory(file.Bytes);
             }
         };
     }
@@ -73,18 +72,17 @@ public partial class EntryDetailWindow : Window
                     break;
 
                 case EntryType.File:
-                    _file = _container.RevealFile(_metadata.Id);
                     FilePanel.Visibility = Visibility.Visible;
-                    FileNameText.Text = $"{_file.FileName} ({_file.Bytes.Length:N0} байт)";
-                    if (FilePreview.IsImage(_file.FileName))
+                    using (var revealed = _container.RevealFiles(_metadata.Id))
                     {
-                        var thumbnail = FilePreview.TryDecode(_file.Bytes.Span, 320);
-                        if (thumbnail is not null)
+                        foreach (var item in revealed.Items)
                         {
-                            FilePreviewImage.Source = thumbnail;
-                            FilePreviewImage.Visibility = Visibility.Visible;
+                            var bytes = item.Bytes.Span.ToArray();
+                            var thumbnail = FilePreview.IsImage(item.FileName) ? FilePreview.TryDecode(bytes, 64) : null;
+                            _files.Add(new FileItem(item.FileName, bytes, thumbnail));
                         }
                     }
+                    RefreshFilesList();
                     break;
             }
         }
@@ -135,53 +133,55 @@ public partial class EntryDetailWindow : Window
         App.Clipboard.CopyWithAutoClear(NoteBodyText.Text);
     }
 
-    private void OnReplaceFileClick(object sender, RoutedEventArgs e)
+    private void OnAddFileClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "Выберите новый файл", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = "Выберите файл(ы)", CheckFileExists = true, Multiselect = true };
         if (dialog.ShowDialog(this) != true)
         {
             return;
         }
 
-        _replacementFileName = Path.GetFileName(dialog.FileName);
-        _replacementFileBytes = File.ReadAllBytes(dialog.FileName);
-        FileNameText.Text = $"{_replacementFileName} ({_replacementFileBytes.Length:N0} байт) — заменится при сохранении";
-
-        FilePreviewImage.Visibility = Visibility.Collapsed;
-        if (FilePreview.IsImage(_replacementFileName))
+        foreach (var path in dialog.FileNames)
         {
-            var thumbnail = FilePreview.TryDecode(_replacementFileBytes, 320);
-            if (thumbnail is not null)
-            {
-                FilePreviewImage.Source = thumbnail;
-                FilePreviewImage.Visibility = Visibility.Visible;
-            }
+            var fileName = Path.GetFileName(path);
+            var bytes = File.ReadAllBytes(path);
+            var thumbnail = FilePreview.IsImage(fileName) ? FilePreview.TryDecode(bytes, 64) : null;
+            _files.Add(new FileItem(fileName, bytes, thumbnail));
+        }
+
+        RefreshFilesList();
+    }
+
+    private void OnRemoveFileClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: FileItem item })
+        {
+            return;
+        }
+
+        _files.Remove(item);
+        CryptographicOperations.ZeroMemory(item.Bytes);
+        RefreshFilesList();
+    }
+
+    private void OnSaveOneFileClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: FileItem item })
+        {
+            return;
+        }
+
+        var dialog = new SaveFileDialog { FileName = item.FileName };
+        if (dialog.ShowDialog(this) == true)
+        {
+            File.WriteAllBytes(dialog.FileName, item.Bytes);
         }
     }
 
-    private void OnSaveFileClick(object sender, RoutedEventArgs e)
+    private void RefreshFilesList()
     {
-        if (_replacementFileBytes is not null && _replacementFileName is not null)
-        {
-            var dialog = new SaveFileDialog { FileName = _replacementFileName };
-            if (dialog.ShowDialog(this) == true)
-            {
-                File.WriteAllBytes(dialog.FileName, _replacementFileBytes);
-            }
-            return;
-        }
-
-        if (_file is null)
-        {
-            return;
-        }
-
-        var saveDialog = new SaveFileDialog { FileName = _file.FileName };
-        if (saveDialog.ShowDialog(this) == true)
-        {
-            using var stream = File.Create(saveDialog.FileName);
-            stream.Write(_file.Bytes.Span);
-        }
+        FilesListBox.ItemsSource = null;
+        FilesListBox.ItemsSource = _files;
     }
 
     private void OnSaveEntryClick(object sender, RoutedEventArgs e)
@@ -190,6 +190,12 @@ public partial class EntryDetailWindow : Window
         if (string.IsNullOrEmpty(title))
         {
             MessageBox.Show(this, "Введите название.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (_metadata.Type == EntryType.File && _files.Count == 0)
+        {
+            MessageBox.Show(this, "У записи должен остаться хотя бы один файл — иначе удалите всю запись целиком.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -212,14 +218,7 @@ public partial class EntryDetailWindow : Window
                     break;
 
                 case EntryType.File:
-                    if (_replacementFileBytes is not null && _replacementFileName is not null)
-                    {
-                        _container.UpdateFile(_metadata.Id, title, tags, _replacementFileName, _replacementFileBytes);
-                    }
-                    else if (_file is not null)
-                    {
-                        _container.UpdateFile(_metadata.Id, title, tags, _file.FileName, _file.Bytes.Span);
-                    }
+                    _container.UpdateFiles(_metadata.Id, title, tags, [.. _files.Select(f => (f.FileName, f.Bytes))]);
                     break;
             }
 
@@ -241,6 +240,18 @@ public partial class EntryDetailWindow : Window
     {
         _login?.Dispose();
         _note?.Dispose();
-        _file?.Dispose();
+    }
+
+    private sealed class FileItem(string fileName, byte[] bytes, BitmapImage? thumbnail)
+    {
+        public string FileName { get; } = fileName;
+
+        public byte[] Bytes { get; } = bytes;
+
+        public BitmapImage? Thumbnail { get; } = thumbnail;
+
+        public string DisplayText => $"{FileName} ({Bytes.Length:N0} байт)";
+
+        public Visibility ThumbnailVisibility => Thumbnail is not null ? Visibility.Visible : Visibility.Collapsed;
     }
 }

@@ -21,7 +21,7 @@ public class VaultContainerEdgeCaseTests : IDisposable
         // A ~300 KB attachment pushes the used region past the 256 KB bucket.
         var bigFile = new byte[300 * 1024];
         Random.Shared.NextBytes(bigFile);
-        vault.AddFile("big attachment", [], "photo.jpg", bigFile);
+        vault.AddFiles("big attachment", [], [("photo.jpg", bigFile)]);
         vault.Save();
 
         Assert.Equal(512 * 1024, new FileInfo(path).Length);

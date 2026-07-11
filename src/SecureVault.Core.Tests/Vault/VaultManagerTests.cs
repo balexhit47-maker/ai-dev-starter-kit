@@ -94,6 +94,23 @@ public class VaultManagerTests : IDisposable
     }
 
     [Fact]
+    public void ListVaults_ShowAllFiles_IncludesUnrecognizedExtensionsButNotTempFiles()
+    {
+        var manager = new VaultManager(_tempRoot);
+        using (manager.CreateVault("personal", "password", Keyfile)) { }
+        File.WriteAllText(Path.Combine(_tempRoot, "renamed-vault.dat"), "some other extension");
+        File.WriteAllText(Path.Combine(_tempRoot, "leftover.tmp"), "should never show up");
+
+        var withDefaults = manager.ListVaults();
+        Assert.Single(withDefaults);
+
+        var withAllFiles = manager.ListVaults(showAllFiles: true);
+        Assert.Equal(2, withAllFiles.Count);
+        Assert.Contains(withAllFiles, v => v.FileName == "renamed-vault.dat");
+        Assert.DoesNotContain(withAllFiles, v => v.FileName == "leftover.tmp");
+    }
+
+    [Fact]
     public void ImportVaultBytes_AvoidsOverwritingExistingVault()
     {
         var manager = new VaultManager(_tempRoot);

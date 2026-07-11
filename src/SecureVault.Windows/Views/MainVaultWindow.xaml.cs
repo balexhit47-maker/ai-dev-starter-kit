@@ -109,9 +109,9 @@ public partial class MainVaultWindow : Window
                     }
 
                 case EntryType.File:
-                    using (var file = _container.RevealFile(entry.Id))
+                    using (var files = _container.RevealFiles(entry.Id))
                     {
-                        return file.FileName.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+                        return files.Items.Any(f => f.FileName.Contains(query, StringComparison.CurrentCultureIgnoreCase));
                     }
 
                 default:
