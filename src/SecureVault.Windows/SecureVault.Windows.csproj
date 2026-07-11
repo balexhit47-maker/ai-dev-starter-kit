@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows-only shell (WPF): everything platform-specific from the TOR
+    (VirtualLock, SetWindowDisplayAffinity, DPAPI-free keyfile handling)
+    lives here, behind SecureVault.Core.Abstractions.IPlatformSecurity.
+    This project targets net8.0-windows and can only be built on Windows
+    (or a Windows-hosted CI agent) — it needs the Windows Desktop SDK,
+    which is not available on the Linux box this repo was scaffolded on.
+    SecureVault.Core and SecureVault.Core.Tests build and run cross-platform
+    and were verified there; this project has not been compiled here.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>SecureVault.Windows</RootNamespace>
+    <!-- Lets `dotnet build` compile (not run) this Windows-targeted project on
+         a non-Windows machine by pulling reference assemblies from NuGet
+         instead of requiring the Windows Desktop SDK workload — used here
+         only to compile-check on the Linux box this repo was scaffolded on. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SecureVault.Core\SecureVault.Core.csproj" />
+  </ItemGroup>
+
+</Project>
