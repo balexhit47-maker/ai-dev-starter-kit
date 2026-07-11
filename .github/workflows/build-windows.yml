@@ -1,0 +1,29 @@
+name: build-windows
+
+on:
+  push:
+    branches:
+      - claude/secure-vault-architecture-ik77ow
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore SecureVault.sln
+
+      - name: Build (Core + Core.Tests + Windows/WPF)
+        run: dotnet build SecureVault.sln --configuration Release --no-restore
+
+      - name: Test (Core)
+        run: dotnet test SecureVault.Core.Tests/SecureVault.Core.Tests.csproj --configuration Release --no-build

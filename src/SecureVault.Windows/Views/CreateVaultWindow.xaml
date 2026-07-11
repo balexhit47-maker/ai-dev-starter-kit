@@ -1,0 +1,52 @@
+<Window x:Class="SecureVault.Windows.Views.CreateVaultWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Новый сейф" Icon="/Assets/app.ico" SizeToContent="Height" MaxHeight="700" Width="440" MinWidth="380"
+        WindowStartupLocation="CenterOwner">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24">
+            <TextBlock Text="Имя сейфа" Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="NameTextBox" Margin="0,0,0,14"/>
+
+            <TextBlock Text="Папка для сохранения" Style="{StaticResource FieldLabelStyle}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <Button Content="Изменить..." Click="OnBrowseFolderClick"/>
+                <TextBlock x:Name="FolderText" Style="{StaticResource HintTextStyle}" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <TextBlock Text="Мастер-пароль" Style="{StaticResource FieldLabelStyle}"/>
+            <PasswordBox x:Name="PasswordBox" Margin="0,0,0,14"/>
+
+            <TextBlock Text="Повторите пароль" Style="{StaticResource FieldLabelStyle}"/>
+            <PasswordBox x:Name="ConfirmPasswordBox" Margin="0,0,0,14"/>
+
+            <TextBlock Text="Файл-ключ — необязательно (выбирается заново при каждом входе, путь нигде не сохраняется)" Style="{StaticResource FieldLabelStyle}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <Button Content="Выбрать файл..." Click="OnBrowseKeyfileClick"/>
+                <Button x:Name="ClearKeyfileButton" Content="Удалить" Margin="8,0,0,0" Click="OnClearKeyfileClick" IsEnabled="False"/>
+                <TextBlock x:Name="KeyfileNameText" Text="файл не выбран" Style="{StaticResource HintTextStyle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            </StackPanel>
+
+            <CheckBox x:Name="CloakAsImageCheckBox" Margin="0,0,0,10" IsChecked="False" Checked="OnCloakAsImageChanged" Unchecked="OnCloakAsImageChanged">
+                <TextBlock TextWrapping="Wrap" Text="Замаскировать под изображение"/>
+            </CheckBox>
+            <StackPanel x:Name="CloakPanel" Margin="0,0,0,14" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <Button Content="Выбрать фото..." Click="OnBrowseCoverImageClick"/>
+                    <TextBlock x:Name="CoverImageNameText" Text="фото не выбрано" Style="{StaticResource HintTextStyle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+                <TextBlock Style="{StaticResource HintTextStyle}" TextWrapping="Wrap"
+                           Text="Сейф будет храниться внутри обычного .jpg/.png — открывается как фото в любом просмотрщике. Работает только при пересылке файлом «как есть»: пересылка как «фото» в мессенджере пересжимает изображение и уничтожает скрытые данные."/>
+            </StackPanel>
+
+            <CheckBox x:Name="NoRecoveryCheckBox" Margin="0,0,0,18" IsChecked="False">
+                <TextBlock TextWrapping="Wrap" Text="Я понимаю, что при потере мастер-пароля или файла-ключа восстановить данные невозможно."/>
+            </CheckBox>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Отмена" Margin="0,0,8,0" Click="OnCancelClick"/>
+                <Button Content="Создать" Style="{StaticResource AccentButtonStyle}" Click="OnCreateClick"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>
