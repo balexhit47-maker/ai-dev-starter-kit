@@ -67,12 +67,6 @@ public partial class CreateVaultWindow : Window
             name += ".vault";
         }
 
-        if (_keyfileBytes is null)
-        {
-            MessageBox.Show(this, "Выберите файл-ключ.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         if (NoRecoveryCheckBox.IsChecked != true)
         {
             MessageBox.Show(this, "Подтвердите, что вы понимаете отсутствие восстановления доступа.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -96,7 +90,7 @@ public partial class CreateVaultWindow : Window
 
         try
         {
-            CreatedContainer = App.VaultManager.CreateVault(name, password.Span, _keyfileBytes, App.PlatformSecurity);
+            CreatedContainer = App.VaultManager.CreateVault(name, password.Span, _keyfileBytes ?? Array.Empty<byte>(), App.PlatformSecurity);
         }
         catch (IOException ex)
         {

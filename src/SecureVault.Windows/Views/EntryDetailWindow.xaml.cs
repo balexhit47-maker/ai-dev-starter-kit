@@ -57,6 +57,15 @@ public partial class EntryDetailWindow : Window
                     _file = _container.RevealFile(_metadata.Id);
                     FilePanel.Visibility = Visibility.Visible;
                     FileNameText.Text = $"{_file.FileName} ({_file.Bytes.Length:N0} байт)";
+                    if (FilePreview.IsImage(_file.FileName))
+                    {
+                        var thumbnail = FilePreview.TryDecode(_file.Bytes.Span, 320);
+                        if (thumbnail is not null)
+                        {
+                            FilePreviewImage.Source = thumbnail;
+                            FilePreviewImage.Visibility = Visibility.Visible;
+                        }
+                    }
                     break;
             }
         }

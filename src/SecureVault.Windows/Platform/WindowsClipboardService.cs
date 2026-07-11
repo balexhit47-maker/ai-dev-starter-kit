@@ -12,19 +12,46 @@ namespace SecureVault.Windows.Platform;
 /// </summary>
 public sealed class WindowsClipboardService : IClipboardService
 {
-    public void SetText(ReadOnlySpan<char> text) => Clipboard.SetText(new string(text));
+    public void SetText(ReadOnlySpan<char> text)
+    {
+        var value = new string(text);
+        RunOnUiThread(() => Clipboard.SetText(value));
+    }
 
     public void Clear()
     {
         // Clipboard.Clear() can throw if another process is holding the
         // clipboard open (common on Windows); swallow, there is nothing
         // actionable for the user to do about a transient clipboard lock.
-        try
+        RunOnUiThread(() =>
         {
-            Clipboard.Clear();
+            try
+            {
+                Clipboard.Clear();
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+            }
+        });
+    }
+
+    /// <summary>
+    /// WPF's Clipboard is an STA/OLE API — it must run on the UI thread.
+    /// <see cref="ClipboardAutoClearService"/>'s auto-clear timer fires on a
+    /// background threadpool thread, so without this marshal, Clear() throws
+    /// a COMException that gets silently swallowed above and the clipboard
+    /// never actually clears.
+    /// </summary>
+    private static void RunOnUiThread(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            action();
         }
-        catch (System.Runtime.InteropServices.COMException)
+        else
         {
+            dispatcher.Invoke(action);
         }
     }
 }

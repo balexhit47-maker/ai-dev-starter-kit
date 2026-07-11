@@ -1,31 +1,39 @@
 <Window x:Class="SecureVault.Windows.Views.MainVaultWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SecureVault" Height="480" Width="600" WindowStartupLocation="CenterScreen"
+        Title="SecureVault" Height="560" Width="680" WindowStartupLocation="CenterScreen"
         Closing="OnClosing" StateChanged="OnStateChanged">
-    <Grid Margin="12">
+    <Grid Margin="24">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock x:Name="TitleText" Grid.Row="0" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+        <TextBlock x:Name="TitleText" Grid.Row="0" Style="{StaticResource PageHeadingStyle}"/>
 
-        <ListView x:Name="EntriesListView" Grid.Row="1" MouseDoubleClick="OnEntriesListViewMouseDoubleClick">
+        <TextBox x:Name="SearchTextBox" Grid.Row="1" Margin="0,0,0,12"
+                 Tag="Поиск по названию, тегам и содержимому..."
+                 TextChanged="OnSearchTextChanged"
+                 ToolTip="Поиск по названию, тегам и содержимому записей"/>
+
+        <ListView x:Name="EntriesListView" Grid.Row="2"
+                  MouseDoubleClick="OnEntriesListViewMouseDoubleClick"
+                  GridViewColumnHeader.Click="OnColumnHeaderClick">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Название" Width="260" DisplayMemberBinding="{Binding Title}"/>
-                    <GridViewColumn Header="Тип" Width="100" DisplayMemberBinding="{Binding Type}"/>
-                    <GridViewColumn Header="Изменено" Width="160" DisplayMemberBinding="{Binding ModifiedAt}"/>
+                    <GridViewColumn Header="Название" Width="280" DisplayMemberBinding="{Binding Title}"/>
+                    <GridViewColumn Header="Тип" Width="110" DisplayMemberBinding="{Binding Type}"/>
+                    <GridViewColumn Header="Изменено" Width="170" DisplayMemberBinding="{Binding ModifiedAt}"/>
                 </GridView>
             </ListView.View>
         </ListView>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Удалить" Padding="10,4" Margin="0,0,8,0" Click="OnDeleteClick"/>
-            <Button Content="Открыть" Padding="10,4" Margin="0,0,8,0" Click="OnOpenClick"/>
-            <Button Content="Добавить..." Padding="10,4" Click="OnAddClick"/>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Удалить" Style="{StaticResource DangerButtonStyle}" Margin="0,0,8,0" Click="OnDeleteClick"/>
+            <Button Content="Открыть" Margin="0,0,8,0" Click="OnOpenClick"/>
+            <Button Content="Добавить..." Style="{StaticResource AccentButtonStyle}" Click="OnAddClick"/>
         </StackPanel>
     </Grid>
 </Window>

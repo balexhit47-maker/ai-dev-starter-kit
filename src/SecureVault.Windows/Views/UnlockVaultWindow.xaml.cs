@@ -56,17 +56,11 @@ public partial class UnlockVaultWindow : Window
 
     private void OnUnlockClick(object sender, RoutedEventArgs e)
     {
-        if (_keyfileBytes is null)
-        {
-            MessageBox.Show(this, "Выберите файл-ключ.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         using var password = SecureStringInterop.ToSecureChars(PasswordBox.SecurePassword, App.PlatformSecurity);
 
         try
         {
-            OpenedContainer = VaultContainer.Open(_descriptor.FilePath, password.Span, _keyfileBytes, App.PlatformSecurity);
+            OpenedContainer = VaultContainer.Open(_descriptor.FilePath, password.Span, _keyfileBytes ?? Array.Empty<byte>(), App.PlatformSecurity);
         }
         catch (UnauthorizedAccessException)
         {

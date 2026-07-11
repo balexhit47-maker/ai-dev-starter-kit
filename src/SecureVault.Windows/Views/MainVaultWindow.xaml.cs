@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using SecureVault.Core.Container;
 using SecureVault.Core.Vault;
@@ -9,12 +10,17 @@ namespace SecureVault.Windows.Views;
 public partial class MainVaultWindow : Window
 {
     private readonly VaultContainer _container;
+    private List<VaultEntryMetadata> _allEntries = [];
+    private string _sortColumn = "ModifiedAt";
+    private bool _sortAscending = false;
 
     public MainVaultWindow(VaultContainer container)
     {
         InitializeComponent();
         _container = container;
-        TitleText.Text = "Сейф";
+        var vaultName = System.IO.Path.GetFileNameWithoutExtension(_container.Path);
+        TitleText.Text = vaultName;
+        Title = $"SecureVault — {vaultName}";
         SourceInitialized += OnSourceInitialized;
         Loaded += (_, _) => RefreshList();
     }
@@ -28,8 +34,118 @@ public partial class MainVaultWindow : Window
 
     private void RefreshList()
     {
-        EntriesListView.ItemsSource = null;
-        EntriesListView.ItemsSource = _container.Entries;
+        _allEntries = [.. _container.Entries];
+        ApplyFilterAndSort();
+    }
+
+    private void ApplyFilterAndSort()
+    {
+        IEnumerable<VaultEntryMetadata> view = _allEntries;
+
+        var query = SearchTextBox.Text.Trim();
+        if (!string.IsNullOrEmpty(query))
+        {
+            view = view.Where(entry => MatchesQuery(entry, query));
+        }
+
+        view = _sortColumn switch
+        {
+            "Title" => _sortAscending
+                ? view.OrderBy(x => x.Title, StringComparer.CurrentCultureIgnoreCase)
+                : view.OrderByDescending(x => x.Title, StringComparer.CurrentCultureIgnoreCase),
+            "Type" => _sortAscending ? view.OrderBy(x => x.Type) : view.OrderByDescending(x => x.Type),
+            _ => _sortAscending ? view.OrderBy(x => x.ModifiedAt) : view.OrderByDescending(x => x.ModifiedAt),
+        };
+
+        EntriesListView.ItemsSource = view.ToList();
+    }
+
+    /// <summary>
+    /// Title/tags match instantly from the already-decrypted index; content
+    /// match briefly reveals and immediately disposes each entry's payload
+    /// (п.4 ТЗ: decrypt on demand, never held longer than needed).
+    /// </summary>
+    private bool MatchesQuery(VaultEntryMetadata entry, string query)
+    {
+        if (entry.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+            entry.Tags.Any(tag => tag.Contains(query, StringComparison.CurrentCultureIgnoreCase)))
+        {
+            return true;
+        }
+
+        try
+        {
+            switch (entry.Type)
+            {
+                case EntryType.Login:
+                    using (var login = _container.RevealLogin(entry.Id))
+                    {
+                        if (login.Username.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                            login.Url.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                        {
+                            return true;
+                        }
+
+                        using var notes = login.RevealNotes();
+                        return new string(notes.Span).Contains(query, StringComparison.CurrentCultureIgnoreCase);
+                    }
+
+                case EntryType.Note:
+                    using (var note = _container.RevealNote(entry.Id))
+                    using (var body = note.RevealBody())
+                    {
+                        return new string(body.Span).Contains(query, StringComparison.CurrentCultureIgnoreCase);
+                    }
+
+                case EntryType.File:
+                    using (var file = _container.RevealFile(entry.Id))
+                    {
+                        return file.FileName.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+                    }
+
+                default:
+                    return false;
+            }
+        }
+        catch
+        {
+            // Corrupt/undecryptable payload — fall back to the title/tag match already checked above.
+            return false;
+        }
+    }
+
+    private void OnSearchTextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => ApplyFilterAndSort();
+
+    private void OnColumnHeaderClick(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is not GridViewColumnHeader { Column: not null } header)
+        {
+            return;
+        }
+
+        var column = (header.Column.Header as string) switch
+        {
+            "Название" => "Title",
+            "Тип" => "Type",
+            "Изменено" => "ModifiedAt",
+            _ => null,
+        };
+        if (column is null)
+        {
+            return;
+        }
+
+        if (_sortColumn == column)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+
+        ApplyFilterAndSort();
     }
 
     private void OnAddClick(object sender, RoutedEventArgs e)

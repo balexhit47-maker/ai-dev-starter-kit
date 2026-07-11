@@ -35,6 +35,8 @@ public sealed class VaultContainer : IDisposable
 
     public IReadOnlyList<VaultEntryMetadata> Entries => _index;
 
+    public string Path => _path;
+
     public static VaultContainer Create(string path, ReadOnlySpan<char> password, ReadOnlySpan<byte> keyfileBytes, IMemoryGuard? memoryGuard = null)
     {
         if (File.Exists(path))

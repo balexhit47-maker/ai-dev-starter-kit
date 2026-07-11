@@ -1,24 +1,24 @@
 <Window x:Class="SecureVault.Windows.Views.VaultListWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SecureVault" Height="420" Width="480" WindowStartupLocation="CenterScreen">
-    <Grid Margin="12">
+        Title="SecureVault" Height="460" Width="520" WindowStartupLocation="CenterScreen">
+    <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Сейфы" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+        <TextBlock Grid.Row="0" Text="Сейфы" Style="{StaticResource PageHeadingStyle}"/>
 
         <ListBox x:Name="VaultsListBox" Grid.Row="1"
                  DisplayMemberPath="FileName"
                  MouseDoubleClick="OnVaultsListBoxMouseDoubleClick"/>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Синхронизация..." Padding="10,4" Margin="0,0,8,0" Click="OnSyncClick"/>
-            <Button Content="Открыть" Padding="10,4" Margin="0,0,8,0" Click="OnOpenClick"/>
-            <Button Content="Новый сейф..." Padding="10,4" Click="OnNewVaultClick"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Синхронизация..." Margin="0,0,8,0" Click="OnSyncClick"/>
+            <Button Content="Открыть" Margin="0,0,8,0" Click="OnOpenClick"/>
+            <Button Content="Новый сейф..." Style="{StaticResource AccentButtonStyle}" Click="OnNewVaultClick"/>
         </StackPanel>
     </Grid>
 </Window>

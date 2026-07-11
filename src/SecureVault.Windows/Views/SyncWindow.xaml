@@ -1,27 +1,29 @@
 <Window x:Class="SecureVault.Windows.Views.SyncWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Синхронизация" Height="420" Width="440" WindowStartupLocation="CenterOwner">
-    <StackPanel Margin="16">
-        <TextBlock Text="Яндекс.Диск (WebDAV)" FontWeight="Bold" Margin="0,0,0,8"/>
-        <TextBlock Text="Логин" Margin="0,0,0,4"/>
-        <TextBox x:Name="WebDavLoginTextBox" Margin="0,0,0,8"/>
-        <TextBlock Text="Пароль приложения (не сохраняется)" Margin="0,0,0,4"/>
-        <PasswordBox x:Name="WebDavPasswordBox" Margin="0,0,0,8"/>
-        <TextBlock Text="Путь на Диске (например: SecureVault/personal.vault)" Margin="0,0,0,4"/>
-        <TextBox x:Name="WebDavPathTextBox" Margin="0,0,0,8"/>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-            <Button Content="Загрузить сейф на Диск..." Padding="8,4" Margin="0,0,8,0" Click="OnWebDavUploadClick"/>
-            <Button Content="Скачать с Диска" Padding="8,4" Click="OnWebDavDownloadClick"/>
+        Title="Синхронизация" Height="560" Width="460" MinHeight="420" WindowStartupLocation="CenterOwner">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24">
+            <TextBlock Text="Яндекс.Диск (WebDAV)" Style="{StaticResource SectionHeadingStyle}"/>
+            <TextBlock Text="Логин" Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="WebDavLoginTextBox" Margin="0,0,0,10"/>
+            <TextBlock Text="Пароль приложения (не сохраняется)" Style="{StaticResource FieldLabelStyle}"/>
+            <PasswordBox x:Name="WebDavPasswordBox" Margin="0,0,0,10"/>
+            <TextBlock Text="Путь на Диске (например: SecureVault/personal.vault)" Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="WebDavPathTextBox" Margin="0,0,0,14"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                <Button Content="Загрузить сейф на Диск..." Style="{StaticResource AccentButtonStyle}" Margin="0,0,8,0" Click="OnWebDavUploadClick"/>
+                <Button Content="Скачать с Диска" Click="OnWebDavDownloadClick"/>
+            </StackPanel>
+
+            <Separator/>
+
+            <TextBlock Text="Импорт по ссылке" Style="{StaticResource SectionHeadingStyle}" Margin="0,14,0,8"/>
+            <TextBlock Text="Публичная ссылка Яндекс.Диска (disk.yandex.ru/d/... или yadi.sk/d/...)" Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="LinkUrlTextBox" Margin="0,0,0,10"/>
+            <Button Content="Импортировать" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Left" Click="OnImportLinkClick"/>
+
+            <TextBlock x:Name="StatusText" Margin="0,16,0,0" Style="{StaticResource HintTextStyle}"/>
         </StackPanel>
-
-        <Separator Margin="0,0,0,16"/>
-
-        <TextBlock Text="Импорт по ссылке" FontWeight="Bold" Margin="0,0,0,8"/>
-        <TextBlock Text="Публичная ссылка Яндекс.Диска (disk.yandex.ru/d/... или yadi.sk/d/...)" TextWrapping="Wrap" Margin="0,0,0,4"/>
-        <TextBox x:Name="LinkUrlTextBox" Margin="0,0,0,8"/>
-        <Button Content="Импортировать" HorizontalAlignment="Left" Padding="8,4" Click="OnImportLinkClick"/>
-
-        <TextBlock x:Name="StatusText" Margin="0,16,0,0" TextWrapping="Wrap" Foreground="DarkSlateGray"/>
-    </StackPanel>
+    </ScrollViewer>
 </Window>
