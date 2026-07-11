@@ -18,6 +18,9 @@ public sealed class VaultEntryMetadata
 
     public List<string> Tags { get; set; } = [];
 
+    /// <summary>Comma-joined tags for display purposes (e.g. a list column).</summary>
+    public string TagsDisplay => string.Join(", ", Tags);
+
     public required DateTimeOffset CreatedAt { get; init; }
 
     public required DateTimeOffset ModifiedAt { get; set; }

@@ -95,11 +95,6 @@ public partial class CreateVaultWindow : Window
             return;
         }
 
-        if (!Path.HasExtension(name))
-        {
-            name += ".vault";
-        }
-
         if (NoRecoveryCheckBox.IsChecked != true)
         {
             MessageBox.Show(this, "Подтвердите, что вы понимаете отсутствие восстановления доступа.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);

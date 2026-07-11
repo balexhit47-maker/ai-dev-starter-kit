@@ -12,6 +12,13 @@ namespace SecureVault.Core.Vault;
 /// </summary>
 public sealed class VaultManager
 {
+    /// <summary>
+    /// Distinctive extension so the vaults folder can safely be pointed at a
+    /// general-purpose folder (Downloads, a synced Drive folder, etc.)
+    /// without the vault list picking up every unrelated file in it.
+    /// </summary>
+    public const string VaultExtension = ".cavault";
+
     public string RootDirectory { get; }
 
     public VaultManager(string? rootDirectory = null)
@@ -26,7 +33,7 @@ public sealed class VaultManager
     public IReadOnlyList<VaultDescriptor> ListVaults()
     {
         return [.. Directory.EnumerateFiles(RootDirectory)
-            .Where(path => !path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
+            .Where(path => path.EndsWith(VaultExtension, StringComparison.OrdinalIgnoreCase))
             .Select(path =>
             {
                 var info = new FileInfo(path);
@@ -37,7 +44,7 @@ public sealed class VaultManager
 
     public VaultContainer CreateVault(string fileName, ReadOnlySpan<char> password, ReadOnlySpan<byte> keyfileBytes, IMemoryGuard? memoryGuard = null)
     {
-        var path = ResolvePath(fileName);
+        var path = ResolvePath(NormalizeVaultFileName(fileName));
         if (File.Exists(path))
         {
             throw new IOException($"A vault named '{fileName}' already exists.");
@@ -56,12 +63,12 @@ public sealed class VaultManager
     /// </summary>
     public string ImportVaultBytes(ReadOnlySpan<byte> containerBytes, string suggestedFileName)
     {
-        var path = ResolvePath(suggestedFileName);
+        var normalizedName = NormalizeVaultFileName(suggestedFileName);
+        var path = ResolvePath(normalizedName);
         if (File.Exists(path))
         {
-            var extension = Path.GetExtension(suggestedFileName);
-            var stem = Path.GetFileNameWithoutExtension(suggestedFileName);
-            path = ResolvePath($"{stem}-{DateTime.UtcNow:yyyyMMdd-HHmmss}{extension}");
+            var stem = Path.GetFileNameWithoutExtension(normalizedName);
+            path = ResolvePath($"{stem}-{DateTime.UtcNow:yyyyMMdd-HHmmss}{VaultExtension}");
         }
 
         using (var stream = File.Create(path))
@@ -83,6 +90,18 @@ public sealed class VaultManager
         }
 
         File.Delete(fullPath);
+    }
+
+    /// <summary>Strips whatever extension was given and appends <see cref="VaultExtension"/>, so every vault this manager creates/imports is idempotently nameable and always shows up in <see cref="ListVaults"/>.</summary>
+    private static string NormalizeVaultFileName(string fileName)
+    {
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        if (string.IsNullOrWhiteSpace(stem))
+        {
+            throw new ArgumentException("Invalid vault file name.", nameof(fileName));
+        }
+
+        return stem + VaultExtension;
     }
 
     private string ResolvePath(string fileName)

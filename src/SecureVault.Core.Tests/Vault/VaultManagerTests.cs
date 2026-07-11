@@ -12,40 +12,62 @@ public class VaultManagerTests : IDisposable
     public void CreateVault_ThenListVaults_ShowsItInTheSameFolder()
     {
         var manager = new VaultManager(_tempRoot);
-        using (manager.CreateVault("personal.vault", "password", Keyfile)) { }
+        using (manager.CreateVault("personal", "password", Keyfile)) { }
 
         var vaults = manager.ListVaults();
 
         var descriptor = Assert.Single(vaults);
-        Assert.Equal("personal.vault", descriptor.FileName);
+        Assert.Equal("personal.cavault", descriptor.FileName);
+    }
+
+    [Fact]
+    public void CreateVault_NormalizesToTheManagedExtension_RegardlessOfWhatWasPassedIn()
+    {
+        var manager = new VaultManager(_tempRoot);
+        using (manager.CreateVault("personal.vault", "password", Keyfile)) { }
+
+        var descriptor = Assert.Single(manager.ListVaults());
+        Assert.Equal("personal.cavault", descriptor.FileName);
+    }
+
+    [Fact]
+    public void ListVaults_IgnoresUnrelatedFilesInTheFolder()
+    {
+        var manager = new VaultManager(_tempRoot);
+        using (manager.CreateVault("personal", "password", Keyfile)) { }
+        File.WriteAllText(Path.Combine(_tempRoot, "not-a-vault.txt"), "unrelated");
+        File.WriteAllText(Path.Combine(_tempRoot, "installer.exe"), "unrelated");
+
+        var descriptor = Assert.Single(manager.ListVaults());
+        Assert.Equal("personal.cavault", descriptor.FileName);
     }
 
     [Fact]
     public void MultipleVaults_CanUseDifferentPasswordsAndKeyfiles()
     {
         var manager = new VaultManager(_tempRoot);
-        using (manager.CreateVault("work.vault", "work-password", "work-keyfile"u8.ToArray())) { }
-        using (manager.CreateVault("personal.vault", "personal-password", "personal-keyfile"u8.ToArray())) { }
+        using (manager.CreateVault("work", "work-password", "work-keyfile"u8.ToArray())) { }
+        using (manager.CreateVault("personal", "personal-password", "personal-keyfile"u8.ToArray())) { }
 
         Assert.Equal(2, manager.ListVaults().Count);
 
         // Each vault only opens with its own factors.
-        using var work = manager.OpenVault(Path.Combine(_tempRoot, "work.vault"), "work-password", "work-keyfile"u8.ToArray());
+        using var work = manager.OpenVault(Path.Combine(_tempRoot, "work.cavault"), "work-password", "work-keyfile"u8.ToArray());
         Assert.Throws<UnauthorizedAccessException>(() =>
-            manager.OpenVault(Path.Combine(_tempRoot, "personal.vault"), "work-password", "work-keyfile"u8.ToArray()));
+            manager.OpenVault(Path.Combine(_tempRoot, "personal.cavault"), "work-password", "work-keyfile"u8.ToArray()));
     }
 
     [Fact]
     public void ImportVaultBytes_WritesIntoManagedFolder_SameAsCreate()
     {
         var manager = new VaultManager(_tempRoot);
-        var sourcePath = Path.Combine(Directory.CreateTempSubdirectory().FullName, "source.vault");
+        var sourcePath = Path.Combine(Directory.CreateTempSubdirectory().FullName, "source.cavault");
         using (Core.Container.VaultContainer.Create(sourcePath, "password", Keyfile)) { }
         var bytes = File.ReadAllBytes(sourcePath);
 
-        var importedPath = manager.ImportVaultBytes(bytes, "imported.vault");
+        var importedPath = manager.ImportVaultBytes(bytes, "imported");
 
-        Assert.Equal(Path.Combine(_tempRoot, "imported.vault"), importedPath);
+        Assert.Equal(Path.Combine(_tempRoot, "imported.cavault"), importedPath);
         using var opened = manager.OpenVault(importedPath, "password", Keyfile);
         Assert.Empty(opened.Entries);
     }
@@ -54,12 +76,12 @@ public class VaultManagerTests : IDisposable
     public void ImportVaultBytes_AvoidsOverwritingExistingVault()
     {
         var manager = new VaultManager(_tempRoot);
-        using (manager.CreateVault("shared.vault", "password", Keyfile)) { }
-        var originalBytes = File.ReadAllBytes(Path.Combine(_tempRoot, "shared.vault"));
+        using (manager.CreateVault("shared", "password", Keyfile)) { }
+        var originalBytes = File.ReadAllBytes(Path.Combine(_tempRoot, "shared.cavault"));
 
-        var importedPath = manager.ImportVaultBytes(originalBytes, "shared.vault");
+        var importedPath = manager.ImportVaultBytes(originalBytes, "shared");
 
-        Assert.NotEqual(Path.Combine(_tempRoot, "shared.vault"), importedPath);
+        Assert.NotEqual(Path.Combine(_tempRoot, "shared.cavault"), importedPath);
         Assert.Equal(2, manager.ListVaults().Count);
     }
 

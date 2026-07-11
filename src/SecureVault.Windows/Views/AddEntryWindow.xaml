@@ -11,7 +11,7 @@
             <TextBlock Text="Теги (через запятую)" Style="{StaticResource FieldLabelStyle}"/>
             <TextBox x:Name="TagsTextBox" Margin="0,0,0,14"/>
 
-            <TabControl x:Name="TypeTabControl" Height="240">
+            <TabControl x:Name="TypeTabControl" SelectionChanged="OnTypeTabControlSelectionChanged">
                 <TabItem Header="Логин">
                     <StackPanel Margin="0,14,0,0">
                         <TextBlock Text="Логин/имя пользователя" Style="{StaticResource FieldLabelStyle}"/>

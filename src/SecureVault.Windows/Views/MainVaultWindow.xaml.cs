@@ -125,7 +125,17 @@ public partial class MainVaultWindow : Window
         }
     }
 
-    private void OnSearchTextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => ApplyFilterAndSort();
+    private void OnSearchTextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        ApplyFilterAndSort();
+        ClearSearchButton.Visibility = string.IsNullOrEmpty(SearchTextBox.Text) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OnClearSearchClick(object sender, RoutedEventArgs e)
+    {
+        SearchTextBox.Text = string.Empty;
+        SearchTextBox.Focus();
+    }
 
     private void OnColumnHeaderClick(object sender, RoutedEventArgs e)
     {

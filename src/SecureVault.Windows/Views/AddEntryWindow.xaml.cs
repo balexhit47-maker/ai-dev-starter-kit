@@ -13,6 +13,8 @@ public partial class AddEntryWindow : Window
 {
     private readonly VaultContainer _container;
     private readonly List<SelectedFileItem> _selectedFiles = [];
+    private int _activeTabIndex;
+    private bool _suppressTabWarning;
 
     public AddEntryWindow(VaultContainer container)
     {
@@ -27,6 +29,50 @@ public partial class AddEntryWindow : Window
             }
         };
     }
+
+    private void OnTypeTabControlSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (e.Source != TypeTabControl || _suppressTabWarning)
+        {
+            return;
+        }
+
+        var newIndex = TypeTabControl.SelectedIndex;
+        if (newIndex == _activeTabIndex)
+        {
+            return;
+        }
+
+        if (HasUnsavedContent(_activeTabIndex))
+        {
+            var result = MessageBox.Show(
+                this,
+                "На текущей вкладке есть введённые данные — при переключении они не сохранятся (сохраняется только вкладка, выбранная при нажатии «Сохранить»). Переключиться всё равно?",
+                "cryptoAll",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes)
+            {
+                _suppressTabWarning = true;
+                TypeTabControl.SelectedIndex = _activeTabIndex;
+                _suppressTabWarning = false;
+                return;
+            }
+        }
+
+        _activeTabIndex = newIndex;
+    }
+
+    private bool HasUnsavedContent(int tabIndex) => tabIndex switch
+    {
+        0 => !string.IsNullOrWhiteSpace(UsernameTextBox.Text)
+            || LoginPasswordBox.SecurePassword.Length > 0
+            || !string.IsNullOrWhiteSpace(UrlTextBox.Text)
+            || !string.IsNullOrWhiteSpace(LoginNotesTextBox.Text),
+        1 => !string.IsNullOrWhiteSpace(NoteBodyTextBox.Text),
+        2 => _selectedFiles.Count > 0,
+        _ => false,
+    };
 
     private void OnBrowseFileClick(object sender, RoutedEventArgs e)
     {
