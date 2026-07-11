@@ -19,14 +19,16 @@ public sealed class VaultContainer : IDisposable
     private readonly CascadeKeyMaterial _keys;
     private readonly IMemoryGuard? _memoryGuard;
     private readonly byte[] _salt;
+    private readonly KdfParameters _kdfParameters;
     private readonly List<VaultEntryMetadata> _index = [];
     private readonly Dictionary<Guid, byte[]> _sealedContent = [];
     private bool _disposed;
 
-    private VaultContainer(string path, byte[] salt, CascadeKeyMaterial keys, IMemoryGuard? memoryGuard)
+    private VaultContainer(string path, byte[] salt, KdfParameters kdfParameters, CascadeKeyMaterial keys, IMemoryGuard? memoryGuard)
     {
         _path = path;
         _salt = salt;
+        _kdfParameters = kdfParameters;
         _keys = keys;
         _memoryGuard = memoryGuard;
     }
@@ -42,9 +44,10 @@ public sealed class VaultContainer : IDisposable
 
         var salt = new byte[KeyDerivationParams.SaltSize];
         RandomNumberGenerator.Fill(salt);
-        var keys = KeyDerivation.DeriveLayerKeys(password, keyfileBytes, salt, memoryGuard);
+        var kdfParameters = KdfParameters.Default;
+        var keys = KeyDerivation.DeriveLayerKeys(password, keyfileBytes, salt, kdfParameters, memoryGuard);
 
-        var container = new VaultContainer(path, salt, keys, memoryGuard);
+        var container = new VaultContainer(path, salt, kdfParameters, keys, memoryGuard);
         container.Save();
         return container;
     }
@@ -67,14 +70,18 @@ public sealed class VaultContainer : IDisposable
         }
 
         var salt = reader.ReadBytes(KeyDerivationParams.SaltSize);
-        _ = reader.ReadInt64(); // Argon2 memory (KiB) — fixed by KeyDerivationParams for now, reserved for future tuning.
-        _ = reader.ReadInt64(); // Argon2 passes
-        _ = reader.ReadInt32(); // Argon2 parallelism
+        // Always re-derive with the parameters THIS file was created with, not
+        // today's KdfParameters.Default — otherwise raising the cost defaults
+        // in a future release would silently break opening older vaults.
+        var kdfParameters = new KdfParameters(
+            MemoryKiB: reader.ReadInt64(),
+            Passes: reader.ReadInt64(),
+            Parallelism: reader.ReadInt32());
         var indexCiphertextLength = reader.ReadInt32();
         var indexCiphertext = reader.ReadBytes(indexCiphertextLength);
         var dataRegionStart = stream.Position;
 
-        var keys = KeyDerivation.DeriveLayerKeys(password, keyfileBytes, salt, memoryGuard);
+        var keys = KeyDerivation.DeriveLayerKeys(password, keyfileBytes, salt, kdfParameters, memoryGuard);
 
         using var indexPlaintext = CascadeCipher.Open(indexCiphertext, keys, memoryGuard);
         if (indexPlaintext is null)
@@ -84,7 +91,7 @@ public sealed class VaultContainer : IDisposable
         }
 
         var index = VaultIndexCodec.Decode(indexPlaintext.Span);
-        var container = new VaultContainer(path, salt, keys, memoryGuard);
+        var container = new VaultContainer(path, salt, kdfParameters, keys, memoryGuard);
         container._index.AddRange(index);
 
         foreach (var entry in index)
@@ -192,9 +199,9 @@ public sealed class VaultContainer : IDisposable
             writer.Write(VaultHeader.MagicBytes);
             writer.Write(VaultHeader.CurrentVersion);
             writer.Write(_salt);
-            writer.Write(KeyDerivationParams.Argon2MemoryKiB);
-            writer.Write(KeyDerivationParams.Argon2Passes);
-            writer.Write(KeyDerivationParams.Argon2Parallelism);
+            writer.Write(_kdfParameters.MemoryKiB);
+            writer.Write(_kdfParameters.Passes);
+            writer.Write(_kdfParameters.Parallelism);
             writer.Write(indexCiphertext.Length);
             writer.Write(indexCiphertext);
             dataRegion.Position = 0;

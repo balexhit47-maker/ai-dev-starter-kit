@@ -34,15 +34,16 @@ public partial class UnlockVaultWindow : Window
         var dialog = new OpenFileDialog { Title = "Выберите файл-ключ", CheckFileExists = true };
         if (dialog.ShowDialog(this) == true)
         {
-            const long maxKeyfileBytes = 10 * 1024 * 1024;
-            var info = new FileInfo(dialog.FileName);
-            if (info.Length > maxKeyfileBytes)
+            try
             {
-                MessageBox.Show(this, "Файл-ключ не должен превышать 10 МБ.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _keyfileBytes = KeyfileReader.ReadBounded(dialog.FileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(this, ex.Message, "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            _keyfileBytes = File.ReadAllBytes(dialog.FileName);
             KeyfileNameText.Text = Path.GetFileName(dialog.FileName);
         }
     }

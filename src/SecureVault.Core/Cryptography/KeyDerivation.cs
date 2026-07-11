@@ -15,14 +15,6 @@ public static class KeyDerivationParams
     /// <summary>Both AES-256-GCM and XChaCha20-Poly1305 take 256-bit keys.</summary>
     public const int LayerKeySize = 32;
 
-    /// <summary>Argon2id memory cost, in KiB. п.3.1 requires a minimum of 64 MiB.</summary>
-    public const long Argon2MemoryKiB = 64 * 1024;
-
-    public const long Argon2Passes = 3;
-
-    /// <summary>libsodium's Argon2id binding only accepts a parallelism of 1.</summary>
-    public const int Argon2Parallelism = 1;
-
     /// <summary>Sanity bound for stack-allocated UTF-8 encoding of the password; not a UX limit.</summary>
     public const int MaxPasswordChars = 1024;
 }
@@ -48,6 +40,7 @@ public static class KeyDerivation
         ReadOnlySpan<char> password,
         ReadOnlySpan<byte> keyfileBytes,
         ReadOnlySpan<byte> salt,
+        KdfParameters kdfParameters,
         IMemoryGuard? memoryGuard = null)
     {
         if (salt.Length != KeyDerivationParams.SaltSize)
@@ -65,9 +58,9 @@ public static class KeyDerivation
 
         var argon2Parameters = new Argon2Parameters
         {
-            DegreeOfParallelism = KeyDerivationParams.Argon2Parallelism,
-            MemorySize = KeyDerivationParams.Argon2MemoryKiB,
-            NumberOfPasses = KeyDerivationParams.Argon2Passes,
+            DegreeOfParallelism = kdfParameters.Parallelism,
+            MemorySize = kdfParameters.MemoryKiB,
+            NumberOfPasses = kdfParameters.Passes,
         };
         var argon2id = PasswordBasedKeyDerivationAlgorithm.Argon2id(argon2Parameters);
         argon2id.DeriveBytes(combinedSecret.Span, salt, masterKey.Span);

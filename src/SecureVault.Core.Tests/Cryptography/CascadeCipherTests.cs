@@ -16,7 +16,7 @@ public class CascadeCipherTests
     {
         var salt = RandomSalt();
         var keyfile = RandomKeyfile();
-        using var keys = KeyDerivation.DeriveLayerKeys("correct horse battery staple", keyfile, salt);
+        using var keys = KeyDerivation.DeriveLayerKeys("correct horse battery staple", keyfile, salt, KdfParameters.Default);
 
         var plaintext = Encoding.UTF8.GetBytes("совершенно секретная заметка про доступы");
         var ciphertext = CascadeCipher.Seal(plaintext, keys);
@@ -32,7 +32,7 @@ public class CascadeCipherTests
     {
         var salt = RandomSalt();
         var keyfile = RandomKeyfile();
-        using var keys = KeyDerivation.DeriveLayerKeys("same password", keyfile, salt);
+        using var keys = KeyDerivation.DeriveLayerKeys("same password", keyfile, salt, KdfParameters.Default);
 
         var plaintext = Encoding.UTF8.GetBytes("identical content");
         var ciphertext1 = CascadeCipher.Seal(plaintext, keys);
@@ -46,8 +46,8 @@ public class CascadeCipherTests
     {
         var salt = RandomSalt();
         var keyfile = RandomKeyfile();
-        using var correctKeys = KeyDerivation.DeriveLayerKeys("right password", keyfile, salt);
-        using var wrongKeys = KeyDerivation.DeriveLayerKeys("wrong password", keyfile, salt);
+        using var correctKeys = KeyDerivation.DeriveLayerKeys("right password", keyfile, salt, KdfParameters.Default);
+        using var wrongKeys = KeyDerivation.DeriveLayerKeys("wrong password", keyfile, salt, KdfParameters.Default);
 
         var ciphertext = CascadeCipher.Seal(Encoding.UTF8.GetBytes("payload"), correctKeys);
 
@@ -60,8 +60,8 @@ public class CascadeCipherTests
     public void Open_WithWrongKeyfile_ReturnsNull()
     {
         var salt = RandomSalt();
-        using var correctKeys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt);
-        using var wrongKeys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt);
+        using var correctKeys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt, KdfParameters.Default);
+        using var wrongKeys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt, KdfParameters.Default);
 
         var ciphertext = CascadeCipher.Seal(Encoding.UTF8.GetBytes("payload"), correctKeys);
 
@@ -77,7 +77,7 @@ public class CascadeCipherTests
     {
         var salt = RandomSalt();
         var keyfile = RandomKeyfile();
-        using var keys = KeyDerivation.DeriveLayerKeys("password", keyfile, salt);
+        using var keys = KeyDerivation.DeriveLayerKeys("password", keyfile, salt, KdfParameters.Default);
 
         var ciphertext = CascadeCipher.Seal(Encoding.UTF8.GetBytes("payload that is long enough to survive tampering checks"), keys);
         ciphertext[byteIndexToFlip] ^= 0xFF;
@@ -91,7 +91,7 @@ public class CascadeCipherTests
     public void Open_WithTruncatedCiphertext_ReturnsNullWithoutThrowing()
     {
         var salt = RandomSalt();
-        using var keys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt);
+        using var keys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt, KdfParameters.Default);
 
         using var opened = CascadeCipher.Open(new byte[5], keys);
 
@@ -102,7 +102,7 @@ public class CascadeCipherTests
     public void SealThenOpen_HandlesEmptyPlaintext()
     {
         var salt = RandomSalt();
-        using var keys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt);
+        using var keys = KeyDerivation.DeriveLayerKeys("password", RandomKeyfile(), salt, KdfParameters.Default);
 
         var ciphertext = CascadeCipher.Seal(ReadOnlySpan<byte>.Empty, keys);
         using var opened = CascadeCipher.Open(ciphertext, keys);
@@ -117,8 +117,8 @@ public class CascadeCipherTests
         var salt = RandomSalt();
         var keyfile = RandomKeyfile();
 
-        using var keys1 = KeyDerivation.DeriveLayerKeys("password", keyfile, salt);
-        using var keys2 = KeyDerivation.DeriveLayerKeys("password", keyfile, salt);
+        using var keys1 = KeyDerivation.DeriveLayerKeys("password", keyfile, salt, KdfParameters.Default);
+        using var keys2 = KeyDerivation.DeriveLayerKeys("password", keyfile, salt, KdfParameters.Default);
 
         // Encrypting with keys1 must be openable with independently-derived keys2.
         var ciphertext = CascadeCipher.Seal(Encoding.UTF8.GetBytes("deterministic"), keys1);
