@@ -20,16 +20,18 @@ public sealed class VaultContainer : IDisposable
     private readonly IMemoryGuard? _memoryGuard;
     private readonly byte[] _salt;
     private readonly KdfParameters _kdfParameters;
+    private readonly byte[]? _coverImageBytes;
     private readonly List<VaultEntryMetadata> _index = [];
     private readonly Dictionary<Guid, byte[]> _sealedContent = [];
     private bool _disposed;
 
-    private VaultContainer(string path, byte[] salt, KdfParameters kdfParameters, CascadeKeyMaterial keys, IMemoryGuard? memoryGuard)
+    private VaultContainer(string path, byte[] salt, KdfParameters kdfParameters, CascadeKeyMaterial keys, byte[]? coverImageBytes, IMemoryGuard? memoryGuard)
     {
         _path = path;
         _salt = salt;
         _kdfParameters = kdfParameters;
         _keys = keys;
+        _coverImageBytes = coverImageBytes;
         _memoryGuard = memoryGuard;
     }
 
@@ -37,7 +39,15 @@ public sealed class VaultContainer : IDisposable
 
     public string Path => _path;
 
-    public static VaultContainer Create(string path, ReadOnlySpan<char> password, ReadOnlySpan<byte> keyfileBytes, IMemoryGuard? memoryGuard = null)
+    /// <summary>True if this vault is steganographically hidden inside a cover image (see <see cref="ImageCloak"/>).</summary>
+    public bool IsImageCloaked => _coverImageBytes is not null;
+
+    /// <param name="coverImageBytes">
+    /// When non-null, the vault is hidden inside this cover image (see
+    /// <see cref="ImageCloak"/>) instead of being written as a standalone
+    /// container file.
+    /// </param>
+    public static VaultContainer Create(string path, ReadOnlySpan<char> password, ReadOnlySpan<byte> keyfileBytes, byte[]? coverImageBytes = null, IMemoryGuard? memoryGuard = null)
     {
         if (File.Exists(path))
         {
@@ -49,14 +59,17 @@ public sealed class VaultContainer : IDisposable
         var kdfParameters = KdfParameters.Default;
         var keys = KeyDerivation.DeriveLayerKeys(password, keyfileBytes, salt, kdfParameters, memoryGuard);
 
-        var container = new VaultContainer(path, salt, kdfParameters, keys, memoryGuard);
+        var container = new VaultContainer(path, salt, kdfParameters, keys, coverImageBytes, memoryGuard);
         container.Save();
         return container;
     }
 
     public static VaultContainer Open(string path, ReadOnlySpan<char> password, ReadOnlySpan<byte> keyfileBytes, IMemoryGuard? memoryGuard = null)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var fileBytes = File.ReadAllBytes(path);
+        var (containerBytes, coverImageBytes) = ImageCloak.Uncloak(fileBytes);
+
+        using var stream = new MemoryStream(containerBytes.ToArray());
         using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
 
         var magic = reader.ReadBytes(VaultHeader.MagicBytes.Length);
@@ -93,7 +106,7 @@ public sealed class VaultContainer : IDisposable
         }
 
         var index = VaultIndexCodec.Decode(indexPlaintext.Span);
-        var container = new VaultContainer(path, salt, kdfParameters, keys, memoryGuard);
+        var container = new VaultContainer(path, salt, kdfParameters, keys, coverImageBytes.Length > 0 ? coverImageBytes.ToArray() : null, memoryGuard);
         container._index.AddRange(index);
 
         foreach (var entry in index)
@@ -212,9 +225,8 @@ public sealed class VaultContainer : IDisposable
         var totalLength = PaddingBuckets.NextBucketSize(usedLength);
         var chaffLength = totalLength - usedLength;
 
-        var tempPath = _path + ".tmp";
-        using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        using var containerStream = new MemoryStream();
+        using (var writer = new BinaryWriter(containerStream, Encoding.UTF8, leaveOpen: true))
         {
             writer.Write(VaultHeader.MagicBytes);
             writer.Write(VaultHeader.CurrentVersion);
@@ -225,10 +237,16 @@ public sealed class VaultContainer : IDisposable
             writer.Write(indexCiphertext.Length);
             writer.Write(indexCiphertext);
             dataRegion.Position = 0;
-            dataRegion.CopyTo(stream);
-            ChaffGenerator.WriteChaff(stream, chaffLength);
+            dataRegion.CopyTo(containerStream);
+            ChaffGenerator.WriteChaff(containerStream, chaffLength);
         }
 
+        var finalBytes = _coverImageBytes is not null
+            ? ImageCloak.Cloak(_coverImageBytes, containerStream.ToArray())
+            : containerStream.ToArray();
+
+        var tempPath = _path + ".tmp";
+        File.WriteAllBytes(tempPath, finalBytes);
         File.Move(tempPath, _path, overwrite: true);
     }
 

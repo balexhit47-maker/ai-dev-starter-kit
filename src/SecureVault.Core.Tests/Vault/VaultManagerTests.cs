@@ -73,6 +73,27 @@ public class VaultManagerTests : IDisposable
     }
 
     [Fact]
+    public void CreateVault_WithCoverImage_ShowsUpInListVaultsWithTheImageExtension()
+    {
+        byte[] coverImage = [0xFF, 0xD8, 0xFF, 0xE0, .. "fake jpeg"u8.ToArray(), 0xFF, 0xD9];
+        var manager = new VaultManager(_tempRoot);
+
+        using (manager.CreateVault("vacation", "password", Keyfile, coverImage, ".jpg")) { }
+
+        var descriptor = Assert.Single(manager.ListVaults());
+        Assert.Equal("vacation.jpg", descriptor.FileName);
+    }
+
+    [Fact]
+    public void ListVaults_DoesNotMistakeAnOrdinaryImageForACloakedVault()
+    {
+        var manager = new VaultManager(_tempRoot);
+        File.WriteAllBytes(Path.Combine(_tempRoot, "real-photo.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 0xFF, 0xD9]);
+
+        Assert.Empty(manager.ListVaults());
+    }
+
+    [Fact]
     public void ImportVaultBytes_AvoidsOverwritingExistingVault()
     {
         var manager = new VaultManager(_tempRoot);

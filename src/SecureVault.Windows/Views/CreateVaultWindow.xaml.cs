@@ -11,7 +11,11 @@ namespace SecureVault.Windows.Views;
 
 public partial class CreateVaultWindow : Window
 {
+    private static readonly string[] CoverImageExtensions = [".jpg", ".jpeg", ".png"];
+
     private byte[]? _keyfileBytes;
+    private byte[]? _coverImageBytes;
+    private string? _coverImageExtension;
 
     public VaultContainer? CreatedContainer { get; private set; }
 
@@ -80,6 +84,36 @@ public partial class CreateVaultWindow : Window
         ClearKeyfileButton.IsEnabled = false;
     }
 
+    private void OnCloakAsImageChanged(object sender, RoutedEventArgs e)
+    {
+        CloakPanel.Visibility = CloakAsImageCheckBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnBrowseCoverImageClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Выберите фото-обложку",
+            Filter = "Изображения (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
+            CheckFileExists = true,
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        var extension = Path.GetExtension(dialog.FileName);
+        if (!CoverImageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            MessageBox.Show(this, "Выберите файл .jpg или .png.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        _coverImageBytes = File.ReadAllBytes(dialog.FileName);
+        _coverImageExtension = extension;
+        CoverImageNameText.Text = Path.GetFileName(dialog.FileName);
+    }
+
     private void OnCancelClick(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
@@ -92,6 +126,12 @@ public partial class CreateVaultWindow : Window
         if (string.IsNullOrEmpty(name))
         {
             MessageBox.Show(this, "Введите имя сейфа.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (CloakAsImageCheckBox.IsChecked == true && _coverImageBytes is null)
+        {
+            MessageBox.Show(this, "Выберите фото для маскировки.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -118,7 +158,13 @@ public partial class CreateVaultWindow : Window
 
         try
         {
-            CreatedContainer = App.VaultManager.CreateVault(name, password.Span, _keyfileBytes ?? Array.Empty<byte>(), App.PlatformSecurity);
+            CreatedContainer = App.VaultManager.CreateVault(
+                name,
+                password.Span,
+                _keyfileBytes ?? Array.Empty<byte>(),
+                coverImageBytes: _coverImageBytes,
+                coverImageExtension: _coverImageExtension,
+                memoryGuard: App.PlatformSecurity);
         }
         catch (IOException ex)
         {

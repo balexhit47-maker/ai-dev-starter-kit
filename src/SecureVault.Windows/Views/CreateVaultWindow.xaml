@@ -27,6 +27,18 @@
                 <TextBlock x:Name="KeyfileNameText" Text="файл не выбран" Style="{StaticResource HintTextStyle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
             </StackPanel>
 
+            <CheckBox x:Name="CloakAsImageCheckBox" Margin="0,0,0,10" IsChecked="False" Checked="OnCloakAsImageChanged" Unchecked="OnCloakAsImageChanged">
+                <TextBlock TextWrapping="Wrap" Text="Замаскировать под изображение"/>
+            </CheckBox>
+            <StackPanel x:Name="CloakPanel" Margin="0,0,0,14" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <Button Content="Выбрать фото..." Click="OnBrowseCoverImageClick"/>
+                    <TextBlock x:Name="CoverImageNameText" Text="фото не выбрано" Style="{StaticResource HintTextStyle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+                <TextBlock Style="{StaticResource HintTextStyle}" TextWrapping="Wrap"
+                           Text="Сейф будет храниться внутри обычного .jpg/.png — открывается как фото в любом просмотрщике. Работает только при пересылке файлом «как есть»: пересылка как «фото» в мессенджере пересжимает изображение и уничтожает скрытые данные."/>
+            </StackPanel>
+
             <CheckBox x:Name="NoRecoveryCheckBox" Margin="0,0,0,18" IsChecked="False">
                 <TextBlock TextWrapping="Wrap" Text="Я понимаю, что при потере мастер-пароля или файла-ключа восстановить данные невозможно."/>
             </CheckBox>

@@ -19,6 +19,9 @@ public sealed class VaultManager
     /// </summary>
     public const string VaultExtension = ".cavault";
 
+    /// <summary>Extensions a cover image may plausibly use for an image-cloaked vault (see <see cref="ImageCloak"/>).</summary>
+    private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png"];
+
     public string RootDirectory { get; }
 
     public VaultManager(string? rootDirectory = null)
@@ -30,27 +33,53 @@ public sealed class VaultManager
     public static string DefaultRootDirectory() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SecureVault", "Vaults");
 
+    /// <summary>
+    /// Lists ".cavault" files outright, plus any image file in the folder
+    /// that turns out to have a cloaked vault footer (see
+    /// <see cref="ImageCloak"/>) — checked by peeking just the last 16 bytes
+    /// of each image, not by reading/decoding it.
+    /// </summary>
     public IReadOnlyList<VaultDescriptor> ListVaults()
     {
-        return [.. Directory.EnumerateFiles(RootDirectory)
-            .Where(path => path.EndsWith(VaultExtension, StringComparison.OrdinalIgnoreCase))
-            .Select(path =>
+        var results = new List<VaultDescriptor>();
+        foreach (var path in Directory.EnumerateFiles(RootDirectory))
+        {
+            var extension = Path.GetExtension(path);
+            var isVault = extension.Equals(VaultExtension, StringComparison.OrdinalIgnoreCase)
+                || (ImageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) && HasCloakedFooter(path));
+            if (!isVault)
             {
-                var info = new FileInfo(path);
-                return new VaultDescriptor(info.FullName, info.Name, info.Length, info.LastWriteTimeUtc);
-            })
-            .OrderByDescending(v => v.LastModifiedUtc)];
+                continue;
+            }
+
+            var info = new FileInfo(path);
+            results.Add(new VaultDescriptor(info.FullName, info.Name, info.Length, info.LastWriteTimeUtc));
+        }
+
+        return [.. results.OrderByDescending(v => v.LastModifiedUtc)];
     }
 
-    public VaultContainer CreateVault(string fileName, ReadOnlySpan<char> password, ReadOnlySpan<byte> keyfileBytes, IMemoryGuard? memoryGuard = null)
+    /// <param name="coverImageBytes">
+    /// When provided (with <paramref name="coverImageExtension"/>), the new
+    /// vault is hidden inside this cover image instead of being saved as a
+    /// standalone ".cavault" file — see <see cref="ImageCloak"/>.
+    /// </param>
+    public VaultContainer CreateVault(
+        string fileName,
+        ReadOnlySpan<char> password,
+        ReadOnlySpan<byte> keyfileBytes,
+        byte[]? coverImageBytes = null,
+        string? coverImageExtension = null,
+        IMemoryGuard? memoryGuard = null)
     {
-        var path = ResolvePath(NormalizeVaultFileName(fileName));
+        var extension = coverImageBytes is not null ? (coverImageExtension ?? ".jpg") : VaultExtension;
+        var path = ResolvePath(NormalizeVaultFileName(fileName, extension));
         if (File.Exists(path))
         {
             throw new IOException($"A vault named '{fileName}' already exists.");
         }
 
-        return Container.VaultContainer.Create(path, password, keyfileBytes, memoryGuard);
+        return Container.VaultContainer.Create(path, password, keyfileBytes, coverImageBytes, memoryGuard);
     }
 
     public VaultContainer OpenVault(string filePath, ReadOnlySpan<char> password, ReadOnlySpan<byte> keyfileBytes, IMemoryGuard? memoryGuard = null)
@@ -63,7 +92,7 @@ public sealed class VaultManager
     /// </summary>
     public string ImportVaultBytes(ReadOnlySpan<byte> containerBytes, string suggestedFileName)
     {
-        var normalizedName = NormalizeVaultFileName(suggestedFileName);
+        var normalizedName = NormalizeVaultFileName(suggestedFileName, VaultExtension);
         var path = ResolvePath(normalizedName);
         if (File.Exists(path))
         {
@@ -92,8 +121,30 @@ public sealed class VaultManager
         File.Delete(fullPath);
     }
 
-    /// <summary>Strips whatever extension was given and appends <see cref="VaultExtension"/>, so every vault this manager creates/imports is idempotently nameable and always shows up in <see cref="ListVaults"/>.</summary>
-    private static string NormalizeVaultFileName(string fileName)
+    private static bool HasCloakedFooter(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (stream.Length < 16)
+            {
+                return false;
+            }
+
+            stream.Seek(-16, SeekOrigin.End);
+            Span<byte> tail = stackalloc byte[16];
+            stream.ReadExactly(tail);
+            return ImageCloak.HasCloakedFooter(tail);
+        }
+        catch (IOException)
+        {
+            // File in use, deleted mid-enumeration, etc. — just not a vault we can show.
+            return false;
+        }
+    }
+
+    /// <summary>Strips whatever extension was given and appends <paramref name="extension"/>, so every vault this manager creates/imports is idempotently nameable and always shows up in <see cref="ListVaults"/>.</summary>
+    private static string NormalizeVaultFileName(string fileName, string extension)
     {
         var stem = Path.GetFileNameWithoutExtension(fileName);
         if (string.IsNullOrWhiteSpace(stem))
@@ -101,7 +152,7 @@ public sealed class VaultManager
             throw new ArgumentException("Invalid vault file name.", nameof(fileName));
         }
 
-        return stem + VaultExtension;
+        return stem + extension;
     }
 
     private string ResolvePath(string fileName)
