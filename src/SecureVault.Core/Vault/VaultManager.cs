@@ -72,6 +72,19 @@ public sealed class VaultManager
         return path;
     }
 
+    /// <summary>Permanently deletes a vault file. Irreversible — callers must confirm with the user first.</summary>
+    public void DeleteVault(string filePath)
+    {
+        var fullPath = Path.GetFullPath(filePath);
+        var fullRoot = Path.GetFullPath(RootDirectory);
+        if (!fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Path is outside the managed vaults folder.", nameof(filePath));
+        }
+
+        File.Delete(fullPath);
+    }
+
     private string ResolvePath(string fileName)
     {
         var safeName = Path.GetFileName(fileName);

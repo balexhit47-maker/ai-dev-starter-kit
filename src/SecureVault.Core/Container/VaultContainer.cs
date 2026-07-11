@@ -123,6 +123,24 @@ public sealed class VaultContainer : IDisposable
         return AddEntry(EntryType.File, title, tags, payload);
     }
 
+    public void UpdateLogin(Guid id, string title, IEnumerable<string> tags, string username, ReadOnlySpan<char> password, string url, ReadOnlySpan<char> notes)
+    {
+        var payload = EntryContentCodec.EncodeLogin(username, password, url, notes);
+        UpdateEntry(id, EntryType.Login, title, tags, payload);
+    }
+
+    public void UpdateNote(Guid id, string title, IEnumerable<string> tags, ReadOnlySpan<char> body)
+    {
+        var payload = EntryContentCodec.EncodeNote(body);
+        UpdateEntry(id, EntryType.Note, title, tags, payload);
+    }
+
+    public void UpdateFile(Guid id, string title, IEnumerable<string> tags, string fileName, ReadOnlySpan<byte> fileBytes)
+    {
+        var payload = EntryContentCodec.EncodeFile(fileName, fileBytes);
+        UpdateEntry(id, EntryType.File, title, tags, payload);
+    }
+
     public void DeleteEntry(Guid id)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -228,6 +246,37 @@ public sealed class VaultContainer : IDisposable
         }
         _sealedContent.Clear();
         _keys.Dispose();
+    }
+
+    private void UpdateEntry(Guid id, EntryType expectedType, string title, IEnumerable<string> tags, byte[] payload)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var entry = _index.Find(e => e.Id == id) ?? throw new KeyNotFoundException($"No entry with id {id}.");
+        if (entry.Type != expectedType)
+        {
+            throw new InvalidOperationException($"Entry {id} is a {entry.Type}, not a {expectedType}.");
+        }
+
+        byte[] sealedBytes;
+        try
+        {
+            sealedBytes = CascadeCipher.Seal(payload, _keys);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(payload);
+        }
+
+        if (_sealedContent.Remove(id, out var oldSealedBytes))
+        {
+            CryptographicOperations.ZeroMemory(oldSealedBytes);
+        }
+        _sealedContent[id] = sealedBytes;
+
+        entry.Title = title;
+        entry.Tags = [.. tags];
+        entry.ModifiedAt = DateTimeOffset.UtcNow;
     }
 
     private Guid AddEntry(EntryType type, string title, IEnumerable<string> tags, byte[] payload)

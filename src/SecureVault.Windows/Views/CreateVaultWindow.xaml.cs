@@ -1,6 +1,7 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
+using System.Windows.Interop;
 using Microsoft.Win32;
 using SecureVault.Core.Container;
 using SecureVault.Core.Vault;
@@ -17,6 +18,7 @@ public partial class CreateVaultWindow : Window
     public CreateVaultWindow()
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => WindowChromeHelper.UseLightTitleBar(new WindowInteropHelper(this).Handle);
         Closed += (_, _) =>
         {
             if (_keyfileBytes is not null)
@@ -37,14 +39,27 @@ public partial class CreateVaultWindow : Window
             }
             catch (InvalidOperationException ex)
             {
-                MessageBox.Show(this, ex.Message, "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, ex.Message, "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             // Only the file name is shown for this-session confirmation; the
             // path is never written to disk/registry/settings (п.3.2 ТЗ).
             KeyfileNameText.Text = Path.GetFileName(dialog.FileName);
+            ClearKeyfileButton.IsEnabled = true;
         }
+    }
+
+    private void OnClearKeyfileClick(object sender, RoutedEventArgs e)
+    {
+        if (_keyfileBytes is not null)
+        {
+            CryptographicOperations.ZeroMemory(_keyfileBytes);
+            _keyfileBytes = null;
+        }
+
+        KeyfileNameText.Text = "файл не выбран";
+        ClearKeyfileButton.IsEnabled = false;
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e)
@@ -58,7 +73,7 @@ public partial class CreateVaultWindow : Window
         var name = NameTextBox.Text.Trim();
         if (string.IsNullOrEmpty(name))
         {
-            MessageBox.Show(this, "Введите имя сейфа.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Введите имя сейфа.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -69,7 +84,7 @@ public partial class CreateVaultWindow : Window
 
         if (NoRecoveryCheckBox.IsChecked != true)
         {
-            MessageBox.Show(this, "Подтвердите, что вы понимаете отсутствие восстановления доступа.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Подтвердите, что вы понимаете отсутствие восстановления доступа.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -78,13 +93,13 @@ public partial class CreateVaultWindow : Window
 
         if (password.Length == 0)
         {
-            MessageBox.Show(this, "Введите мастер-пароль.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Введите мастер-пароль.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         if (!password.Span.SequenceEqual(confirm.Span))
         {
-            MessageBox.Show(this, "Пароли не совпадают.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Пароли не совпадают.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -94,7 +109,7 @@ public partial class CreateVaultWindow : Window
         }
         catch (IOException ex)
         {
-            MessageBox.Show(this, ex.Message, "SecureVault", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
         finally

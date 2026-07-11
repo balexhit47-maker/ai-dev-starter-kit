@@ -1,7 +1,8 @@
 <Window x:Class="SecureVault.Windows.Views.SyncWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Синхронизация" Height="560" Width="460" MinHeight="420" WindowStartupLocation="CenterOwner">
+        Title="Синхронизация" Icon="/Assets/app.ico" SizeToContent="Height" MaxHeight="750" Width="460" MinWidth="400"
+        WindowStartupLocation="CenterOwner">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="24">
             <TextBlock Text="Яндекс.Диск (WebDAV)" Style="{StaticResource SectionHeadingStyle}"/>

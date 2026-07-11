@@ -1,6 +1,7 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
+using System.Windows.Interop;
 using Microsoft.Win32;
 using SecureVault.Core.Container;
 using SecureVault.Core.Vault;
@@ -20,6 +21,7 @@ public partial class UnlockVaultWindow : Window
         InitializeComponent();
         _descriptor = descriptor;
         VaultNameText.Text = descriptor.FileName;
+        SourceInitialized += (_, _) => WindowChromeHelper.UseLightTitleBar(new WindowInteropHelper(this).Handle);
         Closed += (_, _) =>
         {
             if (_keyfileBytes is not null)
@@ -40,12 +42,25 @@ public partial class UnlockVaultWindow : Window
             }
             catch (InvalidOperationException ex)
             {
-                MessageBox.Show(this, ex.Message, "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, ex.Message, "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             KeyfileNameText.Text = Path.GetFileName(dialog.FileName);
+            ClearKeyfileButton.IsEnabled = true;
         }
+    }
+
+    private void OnClearKeyfileClick(object sender, RoutedEventArgs e)
+    {
+        if (_keyfileBytes is not null)
+        {
+            CryptographicOperations.ZeroMemory(_keyfileBytes);
+            _keyfileBytes = null;
+        }
+
+        KeyfileNameText.Text = "файл не выбран";
+        ClearKeyfileButton.IsEnabled = false;
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e)
@@ -64,12 +79,12 @@ public partial class UnlockVaultWindow : Window
         }
         catch (UnauthorizedAccessException)
         {
-            MessageBox.Show(this, "Неверный пароль, файл-ключ или повреждённый контейнер.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, "Неверный пароль, файл-ключ или повреждённый контейнер.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
         catch (InvalidDataException ex)
         {
-            MessageBox.Show(this, ex.Message, "SecureVault", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
         finally

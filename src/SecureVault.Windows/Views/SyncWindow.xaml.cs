@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Interop;
 using Microsoft.Win32;
 using SecureVault.Core.Sync;
 using SecureVault.Windows.Platform;
@@ -14,6 +15,7 @@ public partial class SyncWindow : Window
     public SyncWindow()
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => WindowChromeHelper.UseLightTitleBar(new WindowInteropHelper(this).Handle);
     }
 
     private async void OnWebDavUploadClick(object sender, RoutedEventArgs e)

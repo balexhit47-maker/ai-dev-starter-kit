@@ -1,41 +1,57 @@
 <Window x:Class="SecureVault.Windows.Views.EntryDetailWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Запись" Height="480" Width="460" MinHeight="360" WindowStartupLocation="CenterOwner"
+        Title="Запись" Icon="/Assets/app.ico" SizeToContent="Height" MaxHeight="800" Width="460" MinWidth="400"
+        WindowStartupLocation="CenterOwner"
         SourceInitialized="OnSourceInitialized" Closed="OnClosed">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="24">
-            <TextBlock x:Name="TitleText" Style="{StaticResource SectionHeadingStyle}" FontSize="18" Margin="0,0,0,16"/>
+            <TextBlock Text="Название" Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="TitleTextBox" Margin="0,0,0,10"/>
+
+            <TextBlock Text="Теги (через запятую)" Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="TagsTextBox" Margin="0,0,0,16"/>
 
             <StackPanel x:Name="LoginPanel" Visibility="Collapsed">
                 <TextBlock Text="Логин/имя пользователя" Style="{StaticResource FieldLabelStyle}"/>
-                <TextBox x:Name="UsernameText" IsReadOnly="True" Margin="0,0,0,10"/>
+                <TextBox x:Name="UsernameText" Margin="0,0,0,8"/>
                 <TextBlock Text="URL" Style="{StaticResource FieldLabelStyle}"/>
-                <TextBox x:Name="UrlText" IsReadOnly="True" Margin="0,0,0,10"/>
+                <TextBox x:Name="UrlText" Margin="0,0,0,8"/>
                 <TextBlock Text="Пароль" Style="{StaticResource FieldLabelStyle}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBox x:Name="PasswordText" IsReadOnly="True" Width="200" Text="••••••••"/>
-                    <Button Content="Показать/Скрыть" Margin="8,0,0,0" Click="OnTogglePasswordClick"/>
-                    <Button Content="Копировать" Style="{StaticResource AccentButtonStyle}" Margin="8,0,0,0" Click="OnCopyPasswordClick"/>
-                </StackPanel>
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="PasswordText" Grid.Column="0" IsReadOnly="True" Text="••••••••"/>
+                    <Button Grid.Column="1" Content="Показать" x:Name="TogglePasswordButton" Margin="8,0,0,0" Click="OnTogglePasswordClick"/>
+                    <Button Grid.Column="2" Content="Копировать" Style="{StaticResource AccentButtonStyle}" Margin="8,0,0,0" Click="OnCopyPasswordClick"/>
+                </Grid>
                 <TextBlock Text="Заметки" Style="{StaticResource FieldLabelStyle}"/>
-                <TextBox x:Name="LoginNotesText" IsReadOnly="True" AcceptsReturn="True" Height="50"/>
+                <TextBox x:Name="LoginNotesText" AcceptsReturn="True" Height="50"/>
             </StackPanel>
 
             <StackPanel x:Name="NotePanel" Visibility="Collapsed">
                 <TextBlock Text="Текст заметки" Style="{StaticResource FieldLabelStyle}"/>
-                <TextBox x:Name="NoteBodyText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="150" Margin="0,0,0,10"/>
-                <Button Content="Копировать" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Left" Click="OnCopyNoteClick"/>
+                <TextBox x:Name="NoteBodyText" AcceptsReturn="True" TextWrapping="Wrap" Height="150" Margin="0,0,0,8"/>
+                <Button Content="Копировать" HorizontalAlignment="Left" Click="OnCopyNoteClick"/>
             </StackPanel>
 
             <StackPanel x:Name="FilePanel" Visibility="Collapsed">
-                <TextBlock x:Name="FileNameText" Margin="0,0,0,14"/>
+                <TextBlock x:Name="FileNameText" Style="{StaticResource HintTextStyle}" Margin="0,0,0,10" TextWrapping="Wrap"/>
                 <Image x:Name="FilePreviewImage" MaxHeight="220" Stretch="Uniform" HorizontalAlignment="Left"
-                       Margin="0,0,0,14" Visibility="Collapsed"/>
-                <Button Content="Сохранить как..." Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Left" Click="OnSaveFileClick"/>
+                       Margin="0,0,0,10" Visibility="Collapsed"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Заменить файл..." Margin="0,0,8,0" Click="OnReplaceFileClick"/>
+                    <Button Content="Сохранить как..." Click="OnSaveFileClick"/>
+                </StackPanel>
             </StackPanel>
 
-            <Button Content="Закрыть" HorizontalAlignment="Right" Margin="0,18,0,0" Click="OnCloseClick"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button Content="Закрыть" Margin="0,0,8,0" Click="OnCloseClick"/>
+                <Button Content="Сохранить" Style="{StaticResource AccentButtonStyle}" Click="OnSaveEntryClick"/>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </Window>

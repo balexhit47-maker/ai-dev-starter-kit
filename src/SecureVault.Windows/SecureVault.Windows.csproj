@@ -25,10 +25,21 @@
          instead of requiring the Windows Desktop SDK workload — used here
          only to compile-check on the Linux box this repo was scaffolded on. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!-- User-facing app identity: the product is branded "cryptoAll" even
+         though the internal namespace/project stayed SecureVault.Windows. -->
+    <AssemblyName>cryptoAll</AssemblyName>
+    <AssemblyTitle>cryptoAll</AssemblyTitle>
+    <Product>cryptoAll</Product>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SecureVault.Core\SecureVault.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
   </ItemGroup>
 
 </Project>

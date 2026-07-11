@@ -1,8 +1,11 @@
+using System.IO;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Win32;
 using SecureVault.Core.Container;
 using SecureVault.Core.Vault;
+using SecureVault.Windows.Platform;
 
 namespace SecureVault.Windows.Views;
 
@@ -14,20 +17,32 @@ public partial class EntryDetailWindow : Window
     private DecodedLogin? _login;
     private DecodedNote? _note;
     private DecodedFile? _file;
+    private string? _originalPassword;
     private bool _passwordVisible;
+    private byte[]? _replacementFileBytes;
+    private string? _replacementFileName;
 
     public EntryDetailWindow(VaultContainer container, VaultEntryMetadata metadata)
     {
         InitializeComponent();
         _container = container;
         _metadata = metadata;
-        TitleText.Text = metadata.Title;
+        TitleTextBox.Text = metadata.Title;
+        TagsTextBox.Text = string.Join(", ", metadata.Tags);
+        Closed += (_, _) =>
+        {
+            if (_replacementFileBytes is not null)
+            {
+                CryptographicOperations.ZeroMemory(_replacementFileBytes);
+            }
+        };
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
         var hwnd = new WindowInteropHelper(this).Handle;
         App.PlatformSecurity.ProtectWindowFromCapture(hwnd);
+        WindowChromeHelper.UseLightTitleBar(hwnd);
 
         try
         {
@@ -38,6 +53,10 @@ public partial class EntryDetailWindow : Window
                     LoginPanel.Visibility = Visibility.Visible;
                     UsernameText.Text = _login.Username;
                     UrlText.Text = _login.Url;
+                    using (var password = _login.RevealPassword())
+                    {
+                        _originalPassword = new string(password.Span);
+                    }
                     using (var notes = _login.RevealNotes())
                     {
                         LoginNotesText.Text = new string(notes.Span);
@@ -71,7 +90,7 @@ public partial class EntryDetailWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "SecureVault", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Error);
             Close();
         }
     }
@@ -86,50 +105,134 @@ public partial class EntryDetailWindow : Window
         _passwordVisible = !_passwordVisible;
         if (_passwordVisible)
         {
-            using var password = _login.RevealPassword();
-            PasswordText.Text = new string(password.Span);
+            PasswordText.Text = _originalPassword ?? string.Empty;
+            PasswordText.IsReadOnly = false;
+            TogglePasswordButton.Content = "Скрыть";
         }
         else
         {
+            // Keep whatever was typed while visible so a later Save (without
+            // toggling back) still picks up the edit.
+            _originalPassword = PasswordText.Text;
             PasswordText.Text = "••••••••";
+            PasswordText.IsReadOnly = true;
+            TogglePasswordButton.Content = "Показать";
         }
     }
 
     private void OnCopyPasswordClick(object sender, RoutedEventArgs e)
     {
-        if (_login is null)
+        if (_originalPassword is null)
         {
             return;
         }
 
-        using var password = _login.RevealPassword();
-        App.Clipboard.CopyWithAutoClear(password.Span);
+        App.Clipboard.CopyWithAutoClear(_passwordVisible ? PasswordText.Text : _originalPassword);
     }
 
     private void OnCopyNoteClick(object sender, RoutedEventArgs e)
     {
-        if (_note is null)
+        App.Clipboard.CopyWithAutoClear(NoteBodyText.Text);
+    }
+
+    private void OnReplaceFileClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Title = "Выберите новый файл", CheckFileExists = true };
+        if (dialog.ShowDialog(this) != true)
         {
             return;
         }
 
-        using var body = _note.RevealBody();
-        App.Clipboard.CopyWithAutoClear(body.Span);
+        _replacementFileName = Path.GetFileName(dialog.FileName);
+        _replacementFileBytes = File.ReadAllBytes(dialog.FileName);
+        FileNameText.Text = $"{_replacementFileName} ({_replacementFileBytes.Length:N0} байт) — заменится при сохранении";
+
+        FilePreviewImage.Visibility = Visibility.Collapsed;
+        if (FilePreview.IsImage(_replacementFileName))
+        {
+            var thumbnail = FilePreview.TryDecode(_replacementFileBytes, 320);
+            if (thumbnail is not null)
+            {
+                FilePreviewImage.Source = thumbnail;
+                FilePreviewImage.Visibility = Visibility.Visible;
+            }
+        }
     }
 
     private void OnSaveFileClick(object sender, RoutedEventArgs e)
     {
+        if (_replacementFileBytes is not null && _replacementFileName is not null)
+        {
+            var dialog = new SaveFileDialog { FileName = _replacementFileName };
+            if (dialog.ShowDialog(this) == true)
+            {
+                File.WriteAllBytes(dialog.FileName, _replacementFileBytes);
+            }
+            return;
+        }
+
         if (_file is null)
         {
             return;
         }
 
-        var dialog = new SaveFileDialog { FileName = _file.FileName };
-        if (dialog.ShowDialog(this) == true)
+        var saveDialog = new SaveFileDialog { FileName = _file.FileName };
+        if (saveDialog.ShowDialog(this) == true)
         {
-            using var stream = System.IO.File.Create(dialog.FileName);
+            using var stream = File.Create(saveDialog.FileName);
             stream.Write(_file.Bytes.Span);
         }
+    }
+
+    private void OnSaveEntryClick(object sender, RoutedEventArgs e)
+    {
+        var title = TitleTextBox.Text.Trim();
+        if (string.IsNullOrEmpty(title))
+        {
+            MessageBox.Show(this, "Введите название.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var tags = TagsTextBox.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        try
+        {
+            switch (_metadata.Type)
+            {
+                case EntryType.Login:
+                    if (_passwordVisible)
+                    {
+                        _originalPassword = PasswordText.Text;
+                    }
+                    _container.UpdateLogin(_metadata.Id, title, tags, UsernameText.Text, (_originalPassword ?? string.Empty).AsSpan(), UrlText.Text, LoginNotesText.Text.AsSpan());
+                    break;
+
+                case EntryType.Note:
+                    _container.UpdateNote(_metadata.Id, title, tags, NoteBodyText.Text.AsSpan());
+                    break;
+
+                case EntryType.File:
+                    if (_replacementFileBytes is not null && _replacementFileName is not null)
+                    {
+                        _container.UpdateFile(_metadata.Id, title, tags, _replacementFileName, _replacementFileBytes);
+                    }
+                    else if (_file is not null)
+                    {
+                        _container.UpdateFile(_metadata.Id, title, tags, _file.FileName, _file.Bytes.Span);
+                    }
+                    break;
+            }
+
+            _container.Save();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        DialogResult = true;
+        Close();
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();

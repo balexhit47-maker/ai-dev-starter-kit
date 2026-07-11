@@ -1,6 +1,7 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using SecureVault.Core.Container;
@@ -17,6 +18,7 @@ public partial class AddEntryWindow : Window
     {
         InitializeComponent();
         _container = container;
+        SourceInitialized += (_, _) => WindowChromeHelper.UseLightTitleBar(new WindowInteropHelper(this).Handle);
         Closed += (_, _) =>
         {
             foreach (var file in _selectedFiles)
@@ -62,7 +64,7 @@ public partial class AddEntryWindow : Window
             case 0:
                 if (string.IsNullOrEmpty(title))
                 {
-                    MessageBox.Show(this, "Введите название.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(this, "Введите название.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -75,7 +77,7 @@ public partial class AddEntryWindow : Window
             case 1:
                 if (string.IsNullOrEmpty(title))
                 {
-                    MessageBox.Show(this, "Введите название.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(this, "Введите название.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -85,7 +87,7 @@ public partial class AddEntryWindow : Window
             case 2:
                 if (_selectedFiles.Count == 0)
                 {
-                    MessageBox.Show(this, "Выберите хотя бы один файл.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(this, "Выберите хотя бы один файл.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 

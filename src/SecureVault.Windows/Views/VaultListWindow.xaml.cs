@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Interop;
 using SecureVault.Core.Vault;
+using SecureVault.Windows.Platform;
 
 namespace SecureVault.Windows.Views;
 
@@ -9,6 +11,11 @@ public partial class VaultListWindow : Window
     {
         InitializeComponent();
         Loaded += (_, _) => RefreshList();
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        WindowChromeHelper.UseLightTitleBar(new WindowInteropHelper(this).Handle);
     }
 
     private void RefreshList()
@@ -36,8 +43,31 @@ public partial class VaultListWindow : Window
         }
         else
         {
-            MessageBox.Show(this, "Выберите сейф из списка.", "SecureVault", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Выберите сейф из списка.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+    }
+
+    private void OnDeleteVaultClick(object sender, RoutedEventArgs e)
+    {
+        if (VaultsListBox.SelectedItem is not VaultDescriptor descriptor)
+        {
+            MessageBox.Show(this, "Выберите сейф из списка.", "cryptoAll", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show(
+            this,
+            $"Удалить сейф «{descriptor.FileName}» безвозвратно?\n\nВосстановить его будет невозможно — ни мы, ни кто-либо другой.",
+            "cryptoAll",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        App.VaultManager.DeleteVault(descriptor.FilePath);
+        RefreshList();
     }
 
     private void OnVaultsListBoxMouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using SecureVault.Core.Container;
 using SecureVault.Core.Vault;
+using SecureVault.Windows.Platform;
 
 namespace SecureVault.Windows.Views;
 
@@ -20,16 +21,17 @@ public partial class MainVaultWindow : Window
         _container = container;
         var vaultName = System.IO.Path.GetFileNameWithoutExtension(_container.Path);
         TitleText.Text = vaultName;
-        Title = $"SecureVault — {vaultName}";
+        Title = $"cryptoAll — {vaultName}";
         SourceInitialized += OnSourceInitialized;
         Loaded += (_, _) => RefreshList();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
-        // п.6 ТЗ: block screenshots/screen recording/RDP capture of this window while secrets may be on screen.
         var hwnd = new WindowInteropHelper(this).Handle;
+        // п.6 ТЗ: block screenshots/screen recording/RDP capture of this window while secrets may be on screen.
         App.PlatformSecurity.ProtectWindowFromCapture(hwnd);
+        WindowChromeHelper.UseLightTitleBar(hwnd);
     }
 
     private void RefreshList()
@@ -176,7 +178,10 @@ public partial class MainVaultWindow : Window
         }
 
         var detailWindow = new EntryDetailWindow(_container, metadata) { Owner = this };
-        detailWindow.ShowDialog();
+        if (detailWindow.ShowDialog() == true)
+        {
+            RefreshList();
+        }
     }
 
     private void OnDeleteClick(object sender, RoutedEventArgs e)
@@ -186,7 +191,7 @@ public partial class MainVaultWindow : Window
             return;
         }
 
-        var result = MessageBox.Show(this, $"Удалить «{metadata.Title}»?", "SecureVault", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var result = MessageBox.Show(this, $"Удалить «{metadata.Title}»?", "cryptoAll", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result != MessageBoxResult.Yes)
         {
             return;
